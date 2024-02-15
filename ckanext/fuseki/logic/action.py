@@ -9,7 +9,7 @@ import ckan.lib.navl.dictization_functions
 import ckan.logic as logic
 import ckan.plugins as p
 from ckan.common import config
-import ckanext.jena.backend as backend
+import ckanext.fuseki.backend as backend
 
 log = logging.getLogger(__name__)
 _get_or_bust = logic.get_or_bust
