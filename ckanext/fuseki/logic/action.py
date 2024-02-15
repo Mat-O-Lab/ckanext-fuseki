@@ -7,6 +7,8 @@ import os
 import ckan.lib.search as search
 import ckan.lib.navl.dictization_functions
 import ckan.logic as logic
+from ckan.types import Context
+
 import ckan.plugins as p
 from ckan.common import config
 import ckanext.fuseki.backend as backend
