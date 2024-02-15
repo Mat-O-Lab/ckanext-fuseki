@@ -76,6 +76,7 @@ class JenaPlugin(p.SingletonPlugin):
             file = open(filepath, mode='r')
             content = file.read()
             file.close()
+            logging.info("fuseki ext got update resource event")
             resource['resource_id'] = resource['id']
             resource['records'] = content
             return get_action(u'jena_create')(context, resource)
