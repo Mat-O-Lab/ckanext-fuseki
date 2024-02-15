@@ -132,3 +132,19 @@ def _resource_exists(context, data_dict):
     if not model.Resource.get(res_id):
         return False
     return backend.resource_exists(res_id)
+
+def _check_read_only(context: Context, resource_id: str):
+    ''' Raises exception if the resource is read-only.
+    Make sure the resource id is in resource_id
+    '''
+    res = p.toolkit.get_action('resource_show')(
+        context, {'id': resource_id})
+    if res.get('url_type') not in (
+            p.toolkit.h.datastore_rw_resource_url_types()
+        ):
+        raise p.toolkit.ValidationError({
+            'read-only': ['Cannot edit read-only resource because changes '
+                          'made may be lost. Use a resource created for '
+                          'editing e.g. with datastore_create or use '
+                          '"force=True" to ignore this warning.']
+        })

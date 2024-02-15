@@ -36,7 +36,7 @@ def search_sparql(context, data_dict):
             for chunk in jena_dataset_query_res.iter_content(CHUNK_SIZE):
                 res += chunk
             rdf_data = json.loads(res)
-    except Exception, e:
+    except Exception as e:
         pass
     result = dict(resource_id=resource_id, fields=[dict(type='text', id='rdf')],
                     records=rdf_data, query=q)
