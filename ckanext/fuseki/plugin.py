@@ -12,9 +12,9 @@ from ckan.common import config, request
 from ckan.lib import uploader
 
 import paste.fileapp
-import ckanext.jena.logic.action as action
-import ckanext.jena.logic.auth as auth
-import ckanext.jena.backend as backend
+import ckanext.fuseki.logic.action as action
+import ckanext.fuseki.logic.auth as auth
+import ckanext.fuseki.backend as backend
 
 log = logging.getLogger(__name__)
 

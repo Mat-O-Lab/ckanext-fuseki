@@ -80,9 +80,9 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points='''
         [ckan.plugins]
-        jena=ckanext.jena.plugin:JenaPlugin
+        fuseki=ckanext.fuseki.plugin:JenaPlugin
         [paste.paster_command]
-        jena=ckanext.jena.commands:JenaCommand
+        fuseki=ckanext.fuseki.commands:JenaCommand
 
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan
