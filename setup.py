@@ -6,11 +6,11 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the relevant file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='''ckanext-jena''',
+    name='''ckanext-fuseki''',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
@@ -21,11 +21,11 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/etri-odp/ckanext-jena',
+    url='https://github.com/Mat-O-Lab/ckanext-fuseki',
 
     # Author details
-    author='''Chau Nguyen''',
-    author_email='''chau@etri.re.kr''',
+    author='''Thomas Hanke''',
+    author_email='''thomas.hanke@iwm.fraunhofer.de''',
 
     # Choose your license
     license='AGPL',

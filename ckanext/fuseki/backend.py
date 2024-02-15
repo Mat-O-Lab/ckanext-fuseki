@@ -19,9 +19,9 @@ CHUNK_SIZE = 16 * 1024 # 16kb
 def search_sparql(context, data_dict):
     resource_id = data_dict['resource_id']
     q = data_dict.get('q', '')
-    jena_base_url = config.get('ckan.jena.fuseki.url')
-    jena_username = config.get('ckan.jena.fuseki.username')
-    jena_password = config.get('ckan.jena.fuseki.password')
+    jena_base_url = config.get('ckanext.fuseki.url')
+    jena_username = config.get('ckanext.fuseki.username')
+    jena_password = config.get('ckanext.fuseki.password')
     rdf_data = ''
     try:
         jena_dataset_query_url = jena_base_url + '{resource_id}/query'.format(resource_id=resource_id)
@@ -44,9 +44,9 @@ def search_sparql(context, data_dict):
 
 def delete(context, data_dict):
     resource_id = data_dict['resource_id']
-    jena_base_url = config.get('ckan.jena.fuseki.url')
-    jena_username = config.get('ckan.jena.fuseki.username')
-    jena_password = config.get('ckan.jena.fuseki.password')
+    jena_base_url = config.get('ckanext.fuseki.url')
+    jena_username = config.get('ckanext.fuseki.username')
+    jena_password = config.get('ckanext.fuseki.password')
     result = dict(resource_id=data_dict['resource_id'])
     try:
         jena_dataset_delete_url = jena_base_url + '$/datasets/{resource_id}'.format(resource_id=resource_id)
@@ -62,9 +62,9 @@ def create(context, data_dict):
     model = _get_or_bust(context, 'model')
     resource = model.Resource.get(data_dict['resource_id'])
     resource_id = data_dict['resource_id']
-    jena_base_url = config.get('ckan.jena.fuseki.url')
-    jena_username = config.get('ckan.jena.fuseki.username')
-    jena_password = config.get('ckan.jena.fuseki.password')
+    jena_base_url = config.get('ckanext.fuseki.url')
+    jena_username = config.get('ckanext.fuseki.username')
+    jena_password = config.get('ckanext.fuseki.password')
     try:
         jena_dataset_create_url = jena_base_url + '$/datasets'
         jena_dataset_create_res= requests.post(
@@ -95,9 +95,9 @@ def create(context, data_dict):
     return dict(resource_id=data_dict['resource_id'], fields=fields)
 
 def resource_exists(id):
-    jena_base_url = config.get('ckan.jena.fuseki.url')
-    jena_username = config.get('ckan.jena.fuseki.username')
-    jena_password = config.get('ckan.jena.fuseki.password')
+    jena_base_url = config.get('ckanext.fuseki.url')
+    jena_username = config.get('ckanext.fuseki.username')
+    jena_password = config.get('ckanext.fuseki.password')
     res_exists = False
     try:
         jena_dataset_stats_url = jena_base_url + '$/stats/{resource_id}'.format(resource_id=id)

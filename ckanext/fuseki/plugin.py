@@ -30,7 +30,7 @@ class JenaPlugin(p.SingletonPlugin):
         return None
 
     def configure(self, config):
-        required_keys = ('ckan.jena.fuseki')
+        required_keys = ('ckanext.fuseki')
         for key in required_keys:
             if config.get(key) is None:
                 raise RuntimeError('Required configuration option {0} not found.'.format(key))

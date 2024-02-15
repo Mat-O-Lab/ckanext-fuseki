@@ -14,9 +14,12 @@ import ckanext.fuseki.backend as backend
 log = logging.getLogger(__name__)
 _get_or_bust = logic.get_or_bust
 
-DEFAULT_FORMATS = [
+DEFAULT_FORMATS = os.environ.get("CKANINI__CKANEXT__FUSEKI__FORMATS","").lower().split()
+if not DEFAULT_FORMATS:
+    DEFAULT_FORMATS = [
     'ttl', 'nt', 'nq', 'trig', 'rdf', 'owl', 'jsonld', 'trdf', 'rt', 'rj', 'trix', 'n3'
-]
+    ]
+
 
 def jena_create(context, data_dict):
     model = _get_or_bust(context, 'model')
