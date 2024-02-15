@@ -52,7 +52,7 @@ def delete(context, data_dict):
         jena_dataset_delete_url = jena_base_url + '$/datasets/{resource_id}'.format(resource_id=resource_id)
         jena_dataset_delete_res = requests.delete(jena_dataset_delete_url, auth=(jena_username, jena_password))
         jena_dataset_delete_res.raise_for_status()
-    except Exception, e:
+    except Exception as e:
         pass
 
     return result
@@ -88,7 +88,7 @@ def create(context, data_dict):
             auth=(jena_username, jena_password)
         )
         jena_upload_res.raise_for_status()
-    except Exception, e:
+    except Exception as e:
         raise Exception({
             'jena dataset create error': e
         })
@@ -105,6 +105,6 @@ def resource_exists(id):
         jena_dataset_stats_res.raise_for_status()
         if jena_dataset_stats_res.status_code == requests.codes.ok:
             res_exists = True
-    except Exception, e:
+    except Exception as e:
         pass
     return res_exists
