@@ -6,20 +6,27 @@ Extension automatically generating csvw metadata for uploaded textual tabular da
 **should be used as replacement for datapusher**
 
 ## Requirements
-Needs a running instance of the [CSVToCSVW Application](https://github.com/Mat-O-Lab/CSVToCSVW). 
-Point at it through env variables.
-Also needed is a Api Token for an account with the right privaledges to make the background job work on private datasets and ressources.
-
+Needs a running instance of the jena fuseki. 
+Point at it through env variables
 ```bash
-CKAN_CSVTOCSVW_URL=http://${CSVTOCSVW_HOST}:${CSVTOCSVW_APP_PORT}
-CSVW_API_TOKEN=${CKAN_API_TOKEN}
+CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
+CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
+CKANINI__CKANEXT__FUSEKI__PASSWORD = *****
+CKANINI__CKANEXT__FUSEKI__FORMATS = 'ttl nt nq trig rdf owl jsonld trdf rt rj trix n3'
 ```
+or ckan.ini parameters.
+```bash
+ckan.jena.fuseki.url = http://<fuseki_host>:<fuseki_port>/
+ckan.jena.fuseki.username = <admin_user>
+ckan.jena.fuseki.password = *****
+```
+
 
 You can set the default formats to annotate by setting the env variable CSVTOCSVW_FORMATS for example
 ```bash
-CKANINI__CSVTOCSVW__FORMATS="csv txt asc"
+CKANINI__CKANEXT__FUSEKI__FORMATS = 'ttl nt nq trig rdf owl jsonld trdf rt rj trix n3'
 ```
-else it will react to the following  formats: "csv", "txt", "asc", "tsv"
+else it will react to the listed formats by default
 
 ## Purpose
 
@@ -42,7 +49,7 @@ Compatibility with core CKAN versions:
 | CKAN version    | Compatible?   |
 | --------------- | ------------- |
 | 2.8 and arlier  | not tested    |
-| 2.9             | yes    |
+| 2.9             | no    |
 | 2.10            | yes    |
 
 Suggested values:
