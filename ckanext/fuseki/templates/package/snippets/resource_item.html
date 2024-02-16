@@ -1,0 +1,30 @@
+{% ckan_extends %}
+
+{% block resource_item_explore %}
+  {{ super() }}
+    {% if not url_is_edit and h.fuseki_show_tools(res) %}
+    <div class="dropdown btn-group">
+      <a href="#" class="btn btn-primary dropdown-toggle" type="button" id="dropdownFuseki" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fa fa-share"></i>
+        {{ _('Fuseki') }}
+        <span class="caret"></span> 
+      </a>
+      {% if res.url and h.is_url(res.url) %}
+      <ul class="dropdown-menu" aria-labelledby="dropdownFuseki">
+        {% if res.url and h.is_url(res.url) %}
+        <li>
+          <a class="dropdown-item resource-url-fuseki-create" href="{{ url }}/fuseki" target="_blank" rel="noreferrer">
+            <i class="fa fa-external-link"></i>
+              {{ _('Create Fuseki Dataset') }}
+          </a>
+          <!-- <a class="dropdown-item resource-url-maptransform-run" href="{{ url }}/transform" target="_blank" rel="noreferrer">
+            <i class="fa fa-external-link"></i>
+              {{ _('Run Transformation') }}
+          </a> -->
+        </li>
+        {% endif %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+{% endblock %}

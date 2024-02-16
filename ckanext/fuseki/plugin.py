@@ -6,7 +6,7 @@ import os
 import ckan.plugins as p
 import ckan.logic as logic
 import ckan.model as model
-from ckan.plugins.toolkit import get_action
+from ckan.plugins.toolkit import get_action, add_template_directory
 from ckan.model.core import State
 from ckan.common import config, request
 from ckan.lib import uploader
@@ -15,6 +15,7 @@ import paste.fileapp
 import ckanext.fuseki.logic.action as action
 import ckanext.fuseki.logic.auth as auth
 import ckanext.fuseki.backend as backend
+import ckanext.fuseki import helpers
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class JenaPlugin(p.SingletonPlugin):
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
     p.implements(p.IResourceController, inherit=True)
+    p.implements(p.ITemplateHelpers)
     
     # IConfigurer
 
@@ -35,7 +37,7 @@ class JenaPlugin(p.SingletonPlugin):
             if config.get(key) is None:
                 raise RuntimeError('Required configuration option {0} not found.'.format(key))
         self.config = config
-
+        add_template_directory(config, 'templates')
     # IActions
 
     def get_actions(self):
@@ -100,3 +102,8 @@ class JenaPlugin(p.SingletonPlugin):
             res.extras['jena_active'] = False
             res_query.update(
                 {'extras': res.extras}, synchronize_session=False)
+
+    # ITemplateHelpers
+
+    def get_helpers(self):
+        return helpers.get_helpers()
