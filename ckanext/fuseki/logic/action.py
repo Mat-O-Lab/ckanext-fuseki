@@ -20,6 +20,11 @@ from ckanext.fuseki import db, backend, tasks
 from ckanext.fuseki.helpers import common_member
 from ckanext.fuseki.tasks import update
 
+import ckanapi
+import sqlalchemy as sa
+
+JOB_TIMEOUT = 180
+
 DEFAULT_FORMATS = (
     os.environ.get("CKANINI__CKANEXT__FUSEKI__FORMATS", "").lower().split()
 )
@@ -74,32 +79,38 @@ log = logging.getLogger(__name__)
 #         )
 
 
-# def jena_delete(context, data_dict):
-#     toolkit.check_access("jena_delete", context, data_dict)
-#     if not data_dict.pop("force", False):
-#         resource_id = data_dict["resource_id"]
-#         _check_read_only(context, resource_id)
-#     res_id = data_dict["resource_id"]
-#     res_exists = backend.resource_exists(res_id)
-#     model = toolkit.get_or_bust(context, "model")
-#     resource = model.Resource.get(data_dict["resource_id"])
-#     if res_exists:
-#         result = backend.delete(context, data_dict)
-#     else:
-#         if resource.extras.get("jena_active") is True:
-#             log.debug(
-#                 "jena_active is True but there is no resource {0} in jena".format(
-#                     resource.id
-#                 )
-#             )
+def fuseki_delete(context, data_dict):
+    toolkit.check_access("fuseki_delete", context, data_dict)
+    if not data_dict.pop("force", False):
+        resource_id = data_dict["resource_id"]
+        #_check_read_only(context, resource_id)
+    res_id = data_dict["resource_id"]
+    res_exists = backend.resource_exists(res_id)
+    model = toolkit.get_or_bust(context, "model")
+    resource = model.Resource.get(data_dict["resource_id"])
+    if res_exists:
+        result = backend.delete(context, data_dict)
+        existing_task = toolkit.get_action("task_status_show")(
+            {}, {"entity_id": res_id, "task_type": "fuseki", "key": "fuseki"}
+        )
+        if existing_task:
+            toolkit.get_action("task_status_delete")(context, {"id": existing_task['id']})
+    else:
+        if resource.extras.get("jena_active") is True:
+            log.debug(
+                "jena_active is True but there is no resource {0} in jena".format(
+                    resource.id
+                )
+            )
+        result={}
 
-#     if not data_dict.get("filters") and resource.extras.get("jena_active") is True:
-#         log.debug("Setting jena_active=False on resource {0}".format(resource.id))
-#         set_jena_active_flag(model, data_dict, False)
+    if not data_dict.get("filters") and resource.extras.get("jena_active") is True:
+        log.debug("Setting jena_active=False on resource {0}".format(resource.id))
+        set_jena_active_flag(model, data_dict, False)
 
-#     result.pop("id", None)
-#     result.pop("connection_url", None)
-#     return result
+    result.pop("id", None)
+    result.pop("connection_url", None)
+    return result
 
 
 # @logic.side_effect_free
@@ -267,7 +278,7 @@ def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
         update,
         [res_url, res_id, dataset_id, callback_url, task["last_updated"]],
         title='fuseki {} "{}" {}'.format(operation, res_name, res_url),
-        queue=queue,  # , timeout=JOB_TIMEOUT
+        queue=queue#, timeout=JOB_TIMEOUT
     )
     try:
         db.add_pending_job(job.id, job_type=task["task_type"], result_url=callback_url)
@@ -438,9 +449,10 @@ def fuseki_update_status(
 def get_actions():
         actions = {
             # "jena_create": jena_create,
-            # "jena_delete": jena_delete,
+            "fuseki_delete": fuseki_delete,
             "fuseki_update": fuseki_update,
             "fuseki_update_status": fuseki_update_status,
+            "fuseki_hook": fuseki_hook,
             #"jena_search_sparql": jena_search_sparql
         }
         return actions

@@ -132,7 +132,7 @@ def get_graph(id):
         )
         jena_dataset_stats_res.raise_for_status()
         if jena_dataset_stats_res.status_code == requests.codes.ok:
-            result = jena_base_url + "{resource_id}".format(resource_id=id)
+            result = jena_base_url + "{resource_id}/query".format(resource_id=id)
     except Exception as e:
         pass
     return result
@@ -165,5 +165,5 @@ def graph_create(resource):
     )
     jena_upload_res.raise_for_status()
 
-    return jena_base_url + "{resource_id}/data".format(resource_id=resource['id'])
+    return jena_base_url + "{resource_id}/query".format(resource_id=resource['id'])
 

@@ -3,7 +3,7 @@
 
 from typing import Any
 import ckan.plugins.toolkit as toolkit
-
+from ckanext.fuseki.backend import get_graph 
 import re
 
 def common_member(a, b):
@@ -17,7 +17,11 @@ def fuseki_show_tools(resource):
     else:
         False
 
+def fuseki_graph_exists(resource_id):
+    return get_graph(resource_id)
+
 def get_helpers():
     return {
-        "fuseki_show_tools": fuseki_show_tools
+        "fuseki_show_tools": fuseki_show_tools,
+        "fuseki_graph_exists": fuseki_graph_exists
     }

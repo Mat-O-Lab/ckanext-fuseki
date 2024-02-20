@@ -33,9 +33,14 @@
     <button class="btn btn-secondary" name="create/update" type="submit">
         <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
     </button>
+    {% if h.fuseki_graph_exists(res.id) %}
     <button class="btn btn-danger" name="delete" type="submit">
-        <i class="fa fa-trash"></i> {{ _('Delete') }}
+      <i class="fa fa-trash"></i> {{ _('Delete') }}
     </button>
+    <a class="btn btn-primary" href="http://docker-dev.iwm.fraunhofer.de/sparklis/?title={{res.name}}&endpoint={{ h.fuseki_graph_exists(res.id)|safe }}" role="button">
+      <i class="fa fa-play"></i> {{ _('Query') }}
+    </a>
+    {% endif %}
   </form>
   {% endblock %}
   {% if status %}

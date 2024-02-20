@@ -30,7 +30,7 @@ def jena_create(context, data_dict):
     return jena_auth(context, data_dict, privilege=privilege)
 
 
-def jena_delete(context, data_dict):
+def fuseki_delete(context, data_dict):
     return jena_auth(context, data_dict)
 
 
@@ -53,7 +53,7 @@ def fuseki_update_status(context, data_dict):
 def get_auth_functions():
     return {
                 "jena_create": jena_create,
-                "jena_delete": jena_delete,
+                "fuseki_delete": fuseki_delete,
                 "fuseki_update": fuseki_update,
                 "fuseki_update_status": fuseki_update_status,
                 "jena_search_sparql": jena_search_sparql,

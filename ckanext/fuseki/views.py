@@ -29,7 +29,11 @@ class FusekiView(MethodView):
             # except toolkit.ValidationError:
             #     log.debug(toolkit.ValidationError)
         elif 'delete' in request.form:
-            pass
+            toolkit.get_action('fuseki_delete')(
+                    {}, {
+                        'resource_id': resource_id
+                    }
+                )
 
         return core_helpers.redirect_to(
             'fuseki.fuseki', id=id, resource_id=resource_id
@@ -55,16 +59,6 @@ class FusekiView(MethodView):
                         'resource_id': resource_id
                     }
         )
-        #status=None 
-        # try:
-        #     transform_status=toolkit.get_action('csvwmapandtransform_transform_status')(
-        #             {}, {
-        #                 'resource_id': resource_id
-        #             }
-        #     )
-        # except:
-        #     transform_status=None
-            
     
         return base.render(
             'fuseki/status.html',

@@ -1,5 +1,5 @@
 """
-Abstracts a database. Used for storing logging when it csvwmapandtransform a resource into
+Abstracts a database. Used for storing logging when it fuseki a resource into
 DataStore.
 
 Loosely based on ckan-service-provider's db.py

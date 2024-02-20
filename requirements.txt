@@ -1,1 +1,5 @@
-paste
+ckanapi
+requests>=2.4.2
+sqlalchemy
+pytest
+pytest-ckan
