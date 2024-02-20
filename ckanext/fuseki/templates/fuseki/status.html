@@ -1,0 +1,114 @@
+{% extends "package/base.html" %}
+
+{% set logged_in = true if c.userobj else false %}
+{% set res = resource %}
+
+{% block breadcrumb_content_selected %}{% endblock %}
+
+{% block breadcrumb_content %}
+  {{ super() }}
+  {% if res %}
+      <li>{% link_for h.resource_display_name(res)|truncate(30), named_route=pkg.type ~ '_resource.read', id=pkg.name, resource_id=res.id %}</li>
+      <li{% block breadcrumb_edit_selected %} class="active"{% endblock %}><a href="">{{ _('Fuseki') }}</a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content_action %}
+    {% if res %}
+	{% link_for _('View resource'), named_route=pkg.type ~ '_resource.read', id=pkg.name, resource_id=res.id, class_='btn btn-default', icon='eye' %}
+  {% endif %}
+{% endblock %}
+
+{% block content_primary_nav %}
+  <!-- {{ h.build_nav_icon(pkg.type ~ '_resource.edit', _('Edit resource'), id=pkg.name, resource_id=res.id, icon='pencil') }}
+  {% block inner_primary_nav %}{% endblock %}
+  {{ h.build_nav_icon(pkg.type ~ '_resource.views', _('Views'), id=pkg.name, resource_id=res.id, icon='chart-bar') }} -->
+{% endblock %}
+
+{% block primary_content_inner %}
+  <h1 >{% block form_title %}{{ _('Fuseki Status') }}{% endblock %}</h1>
+  {% block form %}
+  <form method="post" action="{{ action }}" class="fuseki-form">
+    {{ h.csrf_input() }} 
+    <button class="btn btn-secondary" name="create/update" type="submit">
+        <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
+    </button>
+    <button class="btn btn-danger" name="delete" type="submit">
+        <i class="fa fa-trash"></i> {{ _('Delete') }}
+    </button>
+  </form>
+  {% endblock %}
+  {% if status %}
+    {% if status.error and status.error.message %}
+      {% set show_table = false %}
+      <div class="alert alert-error">
+        <strong>{{ _('Upload error:') }}</strong> {{ status.error.message }}
+      </div>
+    {% elif status.task_info and status.task_info.error %}
+      <div class="alert alert-error">
+        {% if status.task_info.error is string %}
+          {# DataPusher < 0.0.3 #}
+          <strong>{{ _('Error:') }}</strong> {{ status.task_info.error }}
+        {% elif status.task_info.error is mapping %}
+          <strong>{{ _('Error:') }}</strong> {{ status.task_info.error.message }}
+          {% for error_key, error_value in status.task_info.error.items() %}
+            {% if error_key != "message" and error_value %}
+              <br>
+              <strong>{{ error_key }}</strong>:
+              {{ error_value }}
+            {% endif %}
+          {% endfor %}
+        {% elif status.task_info.error is iterable %}
+          <strong>{{ _('Error traceback:') }}</strong>
+          <pre>{{ ''.join(status.task_info.error) }}</pre>
+        {% endif %}
+      </div>
+    {% endif %}
+    
+
+    <table class="table table-bordered">
+      <colgroup>
+        <col width="150">
+        <col>
+      </colgroup>
+      <tr>
+        <th>{{ _('Status') }}</th>
+        <td>{{status.status}}</td>
+      </tr>
+      <tr>
+        <th>{{ _('Last updated') }}</th>
+        {% if status.status %}
+          <td><span class="date" title="{{ h.render_datetime(status.last_updated, with_hours=True) }}">{{ h.time_ago_from_timestamp(status.last_updated) }}</span></td>
+        {% else %}
+          <td>{{ _('Never') }}</td>
+        {% endif %}
+      </tr>
+    </table>
+  
+    {% if status and status.logs %}
+      <h3>{{ _('Graph Update Log') }}</h3>
+      {% for item in status.logs|sort(attribute='timestamp') %}
+          {% set level = 'info' if item.level == 'DEBUG' else item.level %}
+          {% set popover_content = 'test' %}
+            <div class="alert alert-{{level |lower }} mb-0 mt-3" role="alert">
+              {% for line in item.message.strip().split('\n') %}
+                {{ line | urlize }}<br />
+              {% endfor %}
+            </div>
+              <span class="date" title="{{ h.render_datetime(item.timestamp, with_hours=True) }}">
+                {{ h.time_ago_from_timestamp(item.timestamp) }}
+              </span>
+      {% endfor %}
+      {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block secondary_content %}
+  {% snippet 'package/snippets/resource_info.html', res=res %}
+  {% snippet 'package/snippets/resources.html', pkg=pkg, active=res.id %}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% asset 'vendor/fileupload' %}
+{% endblock %}

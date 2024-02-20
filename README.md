@@ -12,7 +12,7 @@ Point at it through env variables
 CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
 CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
 CKANINI__CKANEXT__FUSEKI__PASSWORD = *****
-CKANINI__CKANEXT__FUSEKI__FORMATS = 'ttl nt nq trig rdf owl jsonld trdf rt rj trix n3'
+CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
 ```
 or ckan.ini parameters.
 ```bash
@@ -24,7 +24,7 @@ ckan.jena.fuseki.password = *****
 
 You can set the default formats to annotate by setting the env variable CSVTOCSVW_FORMATS for example
 ```bash
-CKANINI__CKANEXT__FUSEKI__FORMATS = 'ttl nt nq trig rdf owl jsonld trdf rt rj trix n3'
+CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
 ```
 else it will react to the listed formats by default
 
