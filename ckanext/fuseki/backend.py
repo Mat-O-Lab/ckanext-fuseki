@@ -87,17 +87,22 @@ def create(context, data_dict):
     jena_upload_url += "{resource_id}/data".format(resource_id=resource_id)
     file_name = resource["name"]
     file_type = resource["mimetype"]
-    response = requests.get(resource["url"])
-    file_data = response.text
-    log.debug(file_data[:200])
-    files = {"file": (file_name, file_data, file_type, {"Expires": "0"})}
-    jena_upload_res = requests.post(
-        jena_upload_url, files=files, auth=(jena_username, jena_password)
-    )
-    jena_upload_res.raise_for_status()
-
+    
     return dict(resource_id=data_dict["resource_id"], fields=fields)
 
+def resource_upload(resource, graph_url):
+    graph_url += "/data"
+    jena_username = config.get("ckanext.fuseki.username")
+    jena_password = config.get("ckanext.fuseki.password")
+    response = requests.get(resource["url"])
+    #file_data = response.text
+    log.debug(response)
+    files = {"file": (resource["name"], response.content, resource["mimetype"], {"Expires": "0"})}
+    jena_upload_res = requests.post(
+        graph_url, files=files, auth=(jena_username, jena_password)
+    )
+    jena_upload_res.raise_for_status()
+    return True
 
 def resource_exists(id):
     jena_base_url = config.get("ckanext.fuseki.url")

@@ -66,6 +66,10 @@ def update(res_url, res_id, dataset_id, callback_url, last_updated, skip_if_no_c
     else:
         _graph = backend.graph_create(_res)
         logger.info("Creating graph in store: {}".format(_graph))
+    logger.info("Uploading {} to graph in store".format(_res['url']))
+    if not backend.resource_upload(_res,_graph):
+        logger.error("Upload {} to graph in store failed".format(_res['url']))
+
     # need to get it as string, casue url annotation doesnt work with private datasets
     # filename,filedata=annotate_csv_uri(csv_res['url'])
     # mappings=get_action("csvwmapandtransform_find_mappings")({},{})

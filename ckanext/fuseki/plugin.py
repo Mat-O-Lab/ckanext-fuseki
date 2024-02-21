@@ -53,45 +53,45 @@ class JenaPlugin(p.SingletonPlugin):
 
     # IResourceController
 
-    def after_create(self, context, resource):
-        if resource.get("url_type") == "upload":
-            upload = uploader.get_resource_uploader(resource)
-            filepath = upload.get_path(resource["id"])
-            file = open(filepath, mode="r")
-            content = file.read()
-            file.close()
-            resource["resource_id"] = resource["id"]
-            resource["records"] = content
-            return get_action("jena_create")(context, resource)
-        return resource
+    # def after_create(self, context, resource):
+    #     if resource.get("url_type") == "upload":
+    #         upload = uploader.get_resource_uploader(resource)
+    #         filepath = upload.get_path(resource["id"])
+    #         file = open(filepath, mode="r")
+    #         content = file.read()
+    #         file.close()
+    #         resource["resource_id"] = resource["id"]
+    #         resource["records"] = content
+    #         return get_action("jena_create")(context, resource)
+    #     return resource
 
-    def after_update(self, context, resource):
-        if resource.get("url_type") == "upload":
-            upload = uploader.get_resource_uploader(resource)
-            filepath = upload.get_path(resource["id"])
-            file = open(filepath, mode="r")
-            content = file.read()
-            file.close()
-            logging.info("fuseki ext got update resource event")
-            resource["resource_id"] = resource["id"]
-            resource["records"] = content
-            return get_action("jena_create")(context, resource)
-        return get_action("jena_create")(context, resource)
+    # def after_update(self, context, resource):
+    #     if resource.get("url_type") == "upload":
+    #         upload = uploader.get_resource_uploader(resource)
+    #         filepath = upload.get_path(resource["id"])
+    #         file = open(filepath, mode="r")
+    #         content = file.read()
+    #         file.close()
+    #         logging.info("fuseki ext got update resource event")
+    #         resource["resource_id"] = resource["id"]
+    #         resource["records"] = content
+    #         return get_action("jena_create")(context, resource)
+    #     return get_action("jena_create")(context, resource)
 
-    def after_delete(self, context, resources):
-        model = context["model"]
-        pkg = context["package"]
-        res_query = model.Session.query(model.Resource)
-        query = res_query.filter(
-            model.Resource.package_id == pkg.id, model.Resource.state == State.DELETED
-        )
-        deleted = [res for res in query.all() if res.extras.get("jena_active") is True]
-        for res in deleted:
-            res_exists = backend.resource_exists(res.id)
-            if res_exists:
-                backend.delete(context, {"resource_id": res.id})
-            res.extras["jena_active"] = False
-            res_query.update({"extras": res.extras}, synchronize_session=False)
+    # def after_delete(self, context, resources):
+    #     model = context["model"]
+    #     pkg = context["package"]
+    #     res_query = model.Session.query(model.Resource)
+    #     query = res_query.filter(
+    #         model.Resource.package_id == pkg.id, model.Resource.state == State.DELETED
+    #     )
+    #     deleted = [res for res in query.all() if res.extras.get("jena_active") is True]
+    #     for res in deleted:
+    #         res_exists = backend.resource_exists(res.id)
+    #         if res_exists:
+    #             backend.delete(context, {"resource_id": res.id})
+    #         res.extras["jena_active"] = False
+    #         res_query.update({"extras": res.extras}, synchronize_session=False)
 
     def _update_graph(self, resource_dict: dict[str, Any]):
         context = {"model": model, "ignore_auth": True, "defer_commit": True}
