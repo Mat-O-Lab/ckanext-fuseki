@@ -30,7 +30,6 @@ DEFAULT_FORMATS = (
 )
 if not DEFAULT_FORMATS:
     DEFAULT_FORMATS = [
-        "json",
         "turtle",
         "text/turtle" "n3",
         "nt",
@@ -40,46 +39,22 @@ if not DEFAULT_FORMATS:
         "xml",
         "json-ld",
         "ld+json",
+        "jsonld",
     ]
 
 
 log = logging.getLogger(__name__)
-#toolkit.get_or_bust = logic.get_or_bust
 
+def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]:
+    """Delete the accompanying Fuseki Dataset
 
-# def jena_create(context, data_dict):
-#     model = toolkit.get_or_bust(context, "model")
-#     res_id = toolkit.get_or_bust(data_dict, "resource_id")
-#     resource = toolkit.get_action("resource_show")(
-#         {"ignore_auth": True}, {"id": res_id}
-#     )
-#     log.debug(resource)
-#     resource_format = resource.get("format", None)
-#     if not resource_format:
-#         raise toolkit.ValidationError(
-#             {"resource": ["resource has no no format information"]}
-#         )
-#     format_parts = re.split("/|;", resource_format.lower().replace(" ", ""))
-#     if common_member(format_parts, DEFAULT_FORMATS):
-#         data_dict["resource"] = resource
-#         toolkit.check_access("jena_create", context, data_dict)
-#         if "resource" not in data_dict and "resource_id" not in data_dict:
-#             raise toolkit.ValidationError(
-#                 {"resource_id": ["resource_id or resource required"]}
-#             )
-#         res_exists = backend.resource_exists(data_dict["resource_id"])
-#         # if res_exists:
-#         #     backend.delete(context, data_dict)
-#         result = backend.create(context, data_dict)
-#         set_jena_active_flag(model, data_dict, True)
-#         return result
-#     else:
-#         raise toolkit.ValidationError(
-#             {"resource": ["resource is not of format in {}".format(DEFAULT_FORMATS)]}
-#         )
+    Args:
+        context (Context): CKAN Contaxt that is passed to authorization and action functions containing some computed variables.
+        data_dict (dict): Dict contains any data posted by the user to CKAN, eg. any fields they’ve completed in a web form they’re submitting or any JSON fields they’ve posted to the API.
 
-
-def fuseki_delete(context, data_dict):
+    Returns:
+        _type_: Resource Id the fuseki graph is delete for if succesfull, or empty dict if not.
+    """
     toolkit.check_access("fuseki_delete", context, data_dict)
     if not data_dict.pop("force", False):
         resource_id = data_dict["resource_id"]
@@ -89,7 +64,7 @@ def fuseki_delete(context, data_dict):
     model = toolkit.get_or_bust(context, "model")
     resource = model.Resource.get(data_dict["resource_id"])
     if res_exists:
-        result = backend.delete(context, data_dict)
+        result = backend.graph_delete(res_id)
         existing_task = toolkit.get_action("task_status_show")(
             {}, {"entity_id": res_id, "task_type": "fuseki", "key": "fuseki"}
         )
@@ -108,100 +83,50 @@ def fuseki_delete(context, data_dict):
         log.debug("Setting jena_active=False on resource {0}".format(resource.id))
         set_jena_active_flag(model, data_dict, False)
 
-    result.pop("id", None)
-    result.pop("connection_url", None)
     return result
 
 
-# @logic.side_effect_free
-# def jena_search_sparql(context, data_dict):
-#     if "resource_id" not in data_dict:
-#         raise toolkit.ObjectNotFound(toolkit._("Resource was not found."))
-#     res_id = data_dict["resource_id"]
-#     res_exists = backend.resource_exists(res_id)
-#     if res_exists:
-#         toolkit.check_access("jena_search_sparql", context, data_dict)
-#         result = backend.search_sparql(context, data_dict)
-#         return result
-#     status = {
-#         "status": None,
-#         "job_id": None,
-#         "job_url": None,
-#         "last_updated": str(datetime.datetime.utcnow()),
-#         "error": None,
+# def set_jena_active_flag(model, data_dict, flag):
+#     update_dict = {"jena_active": flag}
+#     res_query = model.Session.query(
+#         model.resource_table.c.extras, model.resource_table.c.package_id
+#     ).filter(model.Resource.id == data_dict["resource_id"])
+#     extras, package_id = res_query.one()
+#     extras.update(update_dict)
+#     res_query.update({"extras": extras}, synchronize_session=False)
+#     model.Session.query(model.resource_revision_table).filter(
+#         model.ResourceRevision.id == data_dict["resource_id"],
+#         model.ResourceRevision.current is True,
+#     ).update({"extras": extras}, synchronize_session=False)
+
+#     model.Session.commit()
+#     psi = search.PackageSearchIndex()
+#     solr_query = search.PackageSearchQuery()
+#     q = {
+#         "q": 'id:"{0}"'.format(package_id),
+#         "fl": "data_dict",
+#         "wt": "json",
+#         "fq": 'site_id:"%s"' % config.get("ckan.site_id"),
+#         "rows": 1,
 #     }
-#     if not res_exists:
-#         # raise toolkit.ObjectNotFound(toolkit._(
-#         #     'Resource "{0}" was not found.'.format(res_id)
-#         # ))
-#         status["status"] = "not created"
-#     return status
-
-
-def set_jena_active_flag(model, data_dict, flag):
-    update_dict = {"jena_active": flag}
-    res_query = model.Session.query(
-        model.resource_table.c.extras, model.resource_table.c.package_id
-    ).filter(model.Resource.id == data_dict["resource_id"])
-    extras, package_id = res_query.one()
-    extras.update(update_dict)
-    res_query.update({"extras": extras}, synchronize_session=False)
-    model.Session.query(model.resource_revision_table).filter(
-        model.ResourceRevision.id == data_dict["resource_id"],
-        model.ResourceRevision.current is True,
-    ).update({"extras": extras}, synchronize_session=False)
-
-    model.Session.commit()
-    psi = search.PackageSearchIndex()
-    solr_query = search.PackageSearchQuery()
-    q = {
-        "q": 'id:"{0}"'.format(package_id),
-        "fl": "data_dict",
-        "wt": "json",
-        "fq": 'site_id:"%s"' % config.get("ckan.site_id"),
-        "rows": 1,
-    }
-    for record in solr_query.run(q)["results"]:
-        solr_data_dict = json.loads(record["data_dict"])
-        for resource in solr_data_dict["resources"]:
-            if resource["id"] == data_dict["resource_id"]:
-                resource.update(update_dict)
-                psi.index_package(solr_data_dict)
-                break
-
-
-def _resource_exists(context, data_dict):
-    model = toolkit.get_or_bust(context, "model")
-    res_id = toolkit.get_or_bust(data_dict, "resource_id")
-    if not model.Resource.get(res_id):
-        return False
-    return backend.resource_exists(res_id)
-
-
-def _check_read_only(context: Context, resource_id: str):
-    """Raises exception if the resource is read-only.
-    Make sure the resource id is in resource_id
-    """
-    res = toolkit.get_action("resource_show")(context, {"id": resource_id})
-    if res.get("url_type") not in (toolkit.h.datastore_rw_resource_url_types()):
-        raise toolkit.ValidationError(
-            {
-                "read-only": [
-                    "Cannot edit read-only resource because changes "
-                    "made may be lost. Use a resource created for "
-                    "editing e.g. with datastore_create or use "
-                    '"force=True" to ignore this warning.'
-                ]
-            }
-        )
+#     for record in solr_query.run(q)["results"]:
+#         solr_data_dict = json.loads(record["data_dict"])
+#         for resource in solr_data_dict["resources"]:
+#             if resource["id"] == data_dict["resource_id"]:
+#                 resource.update(update_dict)
+#                 psi.index_package(solr_data_dict)
+#                 break
 
 
 def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]:
-    """Start a the transformation job for a certain resource.
+    """Starts an Update Task accompanying Fuseki Dataset
 
-    :param resource_id: The resource id of the resource that you want the
-        datapusher status for.
-    :type resource_id: string
+    Args:
+        context (Context): CKAN Contaxt that is passed to authorization and action functions containing some computed variables.
+        data_dict (dict): Dict contains any data posted by the user to CKAN, eg. any fields they’ve completed in a web form they’re submitting or any JSON fields they’ve posted to the API.
+
+    Returns:
+        dict[str, Any]: The resource the update taske is started for
     """
 
     toolkit.check_access("fuseki_update", context, data_dict)
@@ -224,7 +149,19 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
     return res
 
 
-def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
+def enqueue_update(res_id: str, res_name: str, res_url: str, dataset_id: str, operation: str) -> bool:
+    """Enquery a Update Task as Background Job
+
+    Args:
+        res_id (str): Id of the ressource to use
+        res_name (str): Name of the ressource
+        res_url (str): Download Url of the ressource
+        dataset_id (str): Dateset Id the ressource is associated with
+        operation (str): a string discribing what has trigged the tasks, like update, create
+
+    Returns:
+        bool: True if the the update job was successful enqueued.
+    """
     # skip task if the dataset is already queued
     queue = DEFAULT_QUEUE_NAME
     # Check if this resource is already in the process of being xloadered
@@ -244,7 +181,6 @@ def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
             {}, {"entity_id": res_id, "task_type": "fuseki", "key": "fuseki"}
         )
         assume_task_stale_after = datetime.timedelta(seconds=3600)
-        assume_task_stillborn_after = datetime.timedelta(seconds=int(5))
         if existing_task.get("state") == "pending":
             updated = parse_iso_date(existing_task["last_updated"])
             time_since_last_updated = datetime.datetime.utcnow() - updated
@@ -271,7 +207,6 @@ def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
     )
     # initioalize database for additional job data
     db.init()
-    # Store details of the job in the db
 
     # add this dataset to the queue
     job = toolkit.enqueue_job(
@@ -280,6 +215,7 @@ def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
         title='fuseki {} "{}" {}'.format(operation, res_name, res_url),
         queue=queue#, timeout=JOB_TIMEOUT
     )
+    # Store details of the job in the db
     try:
         db.add_pending_job(job.id, job_type=task["task_type"], result_url=callback_url)
     except sa.exc.IntegrityError:
@@ -296,37 +232,17 @@ def enqueue_update(res_id, res_name, res_url, dataset_id, operation):
     )
     return True
 
-def fuseki_hook(context, data_dict):
-    ''' Update fuseki task. This action is typically called by ckanext-fuseki
-    whenever the status of a job changes.
 
-    :param metadata: metadata provided when submitting job. key-value pairs.
-                     Must have resource_id property.
-    :type metadata: dict
-    :param status: status of the job from the fuseki service. Allowed values:
-                   pending, running, running_but_viewable, complete, error
-                   (which must all be valid values for task_status too)
-    :type status: string
-    :param error: Error raised during job execution
-    :type error: string
+def fuseki_hook(context: Context, data_dict: dict[str, Any]):
+    """Update Fuseki Task Status called by backgroundjob running to update job information.
 
-    NB here are other params which are in the equivalent object in
-    ckan-service-provider (from job_status):
-        :param sent_data: Input data for job
-        :type sent_data: json encodable data
-        :param job_id: An identifier for the job
-        :type job_id: string
-        :param result_url: Callback url
-        :type result_url: url string
-        :param data: Results from job.
-        :type data: json encodable data
-        :param requested_timestamp: Time the job started
-        :type requested_timestamp: timestamp
-        :param finished_timestamp: Time the job finished
-        :type finished_timestamp: timestamp
+    Args:
+        context (Context): CKAN Contaxt that is passed to authorization and action functions containing some computed variables.
+        data_dict (dict): Dict contains any data posted by the user to CKAN, eg. any fields they’ve completed in a web form they’re submitting or any JSON fields they’ve posted to the API.
+            Must include 'metadata', 'status', 'job_info' key values
 
-    '''
-
+    """
+    
     metadata, status, job_info = toolkit.get_or_bust(data_dict, ['metadata', 'status', 'job_info'])
 
     res_id = toolkit.get_or_bust(metadata, 'resource_id')
@@ -402,9 +318,11 @@ def fuseki_update_status(
         context: Context, data_dict: dict[str, Any]) -> dict[str, Any]:
     ''' Get the status of a the transformation job for a certain resource.
 
-    :param resource_id: The resource id of the resource that you want the
-        datapusher status for.
-    :type resource_id: string
+        Args:
+        context (Context): CKAN Contaxt that is passed to authorization and action functions containing some computed variables.
+        data_dict (dict): Dict contains any data posted by the user to CKAN, eg. any fields they’ve completed in a web form they’re submitting or any JSON fields they’ve posted to the API.
+            Must include 'resource_id' as string
+
     '''
     toolkit.check_access('fuseki_update_status', context, data_dict)
     
@@ -448,11 +366,9 @@ def fuseki_update_status(
 
 def get_actions():
         actions = {
-            # "jena_create": jena_create,
             "fuseki_delete": fuseki_delete,
             "fuseki_update": fuseki_update,
             "fuseki_update_status": fuseki_update_status,
             "fuseki_hook": fuseki_hook,
-            #"jena_search_sparql": jena_search_sparql
         }
         return actions

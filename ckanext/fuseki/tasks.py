@@ -61,15 +61,19 @@ def update(res_url, res_id, dataset_id, callback_url, last_updated, skip_if_no_c
 
     callback_fuseki_hook(callback_url,job_dict=job_dict)
     _graph = backend.get_graph(res_id)
+    logger.debug("{} {}".format(res_id,_res['id']))
     if _graph:
         logger.info("Found existing graph in store: {}".format(_graph))
     else:
-        _graph = backend.graph_create(_res)
+        _graph = backend.graph_create(res_id)
         logger.info("Creating graph in store: {}".format(_graph))
-    logger.info("Uploading {} to graph in store".format(_res['url']))
-    if not backend.resource_upload(_res,_graph):
-        logger.error("Upload {} to graph in store failed".format(_res['url']))
-
+    logger.debug("Uploading {} to graph in store".format(_res['url']))
+    try:
+        backend.resource_upload(_res,_graph)
+    except Exception as e:
+        logger.error("Upload {} to graph in store failed: {}".format(_res['url'],e))
+    else:
+        logger.info("Upload {} to graph {} successfull".format(_res['url'],_graph))
     # need to get it as string, casue url annotation doesnt work with private datasets
     # filename,filedata=annotate_csv_uri(csv_res['url'])
     # mappings=get_action("csvwmapandtransform_find_mappings")({},{})
@@ -134,7 +138,7 @@ def update(res_url, res_id, dataset_id, callback_url, last_updated, skip_if_no_c
     #             #     **resource)
     #             resource["id"] = ressouce_existing["id"]
     #             metadata_res=get_action("resource_update")({"ignore_auth": True}, resource)
-    logger.info("job completed results at {}".format(_res['url']))
+    logger.info("job completed results at {}".format(_graph))
     #all is done update job status
     job_dict['status'] = 'complete'
     callback_fuseki_hook(callback_url,

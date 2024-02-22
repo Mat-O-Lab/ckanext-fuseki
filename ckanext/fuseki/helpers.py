@@ -15,7 +15,7 @@ def fuseki_show_tools(resource):
     if common_member(format_parts,DEFAULT_FORMATS):
         return True
     else:
-        False
+        return False
 
 def fuseki_graph_exists(resource_id):
     return get_graph(resource_id)
