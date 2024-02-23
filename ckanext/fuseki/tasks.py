@@ -24,19 +24,19 @@ if not SSL_VERIFY:
 
 from rq import get_current_job
 
-def update(res_url, res_id, dataset_id, callback_url, last_updated, skip_if_no_changes=True):
+def update(dataset_url, dataset_id, res_ids, callback_url, last_updated, skip_if_no_changes=True):
     # url = '{ckan}/dataset/{pkg}/resource/{res_id}/download/{filename}'.format(
     #         ckan=CKAN_URL, pkg=dataset_id, res_id=res_id, filename=res_url)
-    _res = get_action("resource_show")({"ignore_auth": True}, {"id": res_id})
     context={
         'session': model.meta.create_local_session(),
         "ignore_auth": True
         }
     metadata = {
             'ckan_url': CKAN_URL,
-            'resource_id': res_id,
+            'pkg_id': dataset_id,
+            'resource_ids': res_ids,
             'task_created': last_updated,
-            'original_url': res_url,
+            'original_url': dataset_url,
         }
     job_info=dict()
     job_dict = dict(metadata=metadata,
@@ -60,84 +60,22 @@ def update(res_url, res_id, dataset_id, callback_url, last_updated, skip_if_no_c
     logger.setLevel(logging.DEBUG)
 
     callback_fuseki_hook(callback_url,job_dict=job_dict)
-    _graph = backend.get_graph(res_id)
-    logger.debug("{} {}".format(res_id,_res['id']))
+    _graph = backend.get_graph(dataset_id)
+    logger.debug("{} {}".format(dataset_id,res_ids))
     if _graph:
         logger.info("Found existing graph in store: {}".format(_graph))
     else:
-        _graph = backend.graph_create(res_id)
+        _graph = backend.graph_create(dataset_id)
         logger.info("Creating graph in store: {}".format(_graph))
-    logger.debug("Uploading {} to graph in store".format(_res['url']))
-    try:
-        backend.resource_upload(_res,_graph)
-    except Exception as e:
-        logger.error("Upload {} to graph in store failed: {}".format(_res['url'],e))
-    else:
-        logger.info("Upload {} to graph {} successfull".format(_res['url'],_graph))
-    # need to get it as string, casue url annotation doesnt work with private datasets
-    # filename,filedata=annotate_csv_uri(csv_res['url'])
-    # mappings=get_action("csvwmapandtransform_find_mappings")({},{})
-    # mapping_urls=[res['url'] for res in mappings]
-    # logger.info("Mappings found: {}".format(mapping_urls))
-    # # tests=get_action(u'csvwmapandtransform_test_mappings')(
-    # #             {}, {
-    # #                 u'data_url': resource['url'],
-    # #                 u'map_urls': [res['url'] for res in mapping_resources]
-    # #             }
-    # #         )
-    # logger.info("testing mappings with: {}".format(_res['url']))
-    # # tests=get_action(u'csvwmapandtransform_test_map
-    # res=[{'mapping': map_url,'test': mapper.check_mapping(map_url=map_url, data_url=_res['url'], authorization=CSVWMAPANDTRANSFORM_TOKEN)} for map_url in mapping_urls]
-    # for item in res:
-    #     if item['test']:
-    #         #the more rules can be applied and the more are not skipped the better the mapping
-    #         item['rating']=item['test']['rules_applicable']-item['test']['rules_skipped']
-    # #sort by rating
-    # sorted_list = sorted(res, key=lambda x: x['rating'],reverse=True)
-    # logger.info("Rated mappings: {}".format(sorted_list))
-    # #best cnadidate is sorted_list[0]
-    # if sorted_list and sorted_list[0]['rating']>0:
-    #     best_condidate=sorted_list[0]['mapping']
-    # else:
-    #     best_condidate=None
-    # #run mapping and join data
-    # if best_condidate:
-    #     filename, graph_data, num_applied, num_skipped = mapper.get_joined_rdf(map_url= best_condidate,data_url=_res['url'],authorization=CSVWMAPANDTRANSFORM_TOKEN)
-    #     s = requests.Session()
-    #     s.headers.update({"Authorization": CSVWMAPANDTRANSFORM_TOKEN})
-    #     prefix, suffix = filename.rsplit(".", 1)
-    #     if not prefix:
-    #         prefix = "unnamed"
-    #     if not suffix:
-    #         suffix = "ttl"
-    #     # log.debug(csv_data)
-    #     # # Upload resource to CKAN as a new/updated resource
-    #     ressouce_existing = resource_search(dataset_id, filename)
-    #     with tempfile.NamedTemporaryFile(prefix=prefix, suffix="." + suffix) as graph_file:
-    #         graph_file.write(graph_data.encode("utf-8"))
-    #         graph_file.seek(0)
-    #         tmp_filename = graph_file.name
-    #         upload = FlaskFileStorage(open(tmp_filename, "rb"), filename)
-    #         resource = dict(
-    #             package_id=dataset_id,
-    #             # url='dummy-value',
-    #             upload=upload,
-    #             name=filename,
-    #             format="text/turtle; charset=utf-8",
-    #         )
-    #         if not ressouce_existing:
-    #             logger.info("Writing new resource {} to dataset {}".format(filename,dataset_id))
-    #             # local_ckan.action.resource_create(**resource)
-    #             metadata_res = get_action("resource_create")(
-    #                 {"ignore_auth": True}, resource
-    #             )
-    #         else:
-    #             logger.info("Updating resource - {}".format(ressouce_existing["url"]))
-    #             # local_ckan.action.resource_patch(
-    #             #     id=res['id'],
-    #             #     **resource)
-    #             resource["id"] = ressouce_existing["id"]
-    #             metadata_res=get_action("resource_update")({"ignore_auth": True}, resource)
+    logger.debug("Uploading {} to graph in store at {}".format(dataset_url,_graph))
+    for res_id in res_ids:
+        _res = get_action("resource_show")({"ignore_auth": True}, {"id": res_id})
+        try:
+            backend.resource_upload(_res,_graph)
+        except Exception as e:
+            logger.error("Upload {} to graph in store failed: {}".format(_res['url'],e))
+        else:
+            logger.info("Upload {} to graph {} successfull".format(_res['url'],_graph))
     logger.info("job completed results at {}".format(_graph))
     #all is done update job status
     job_dict['status'] = 'complete'

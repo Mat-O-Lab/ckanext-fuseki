@@ -5,3 +5,9 @@
     {% link_for _('Manage'), named_route=pkg.type ~ '.edit', id=pkg.name, class_='btn btn-light', icon='wrench' %}
   {% endif %}
 {% endblock %}
+
+{% block content_primary_nav %}
+  {{ super() }}
+  {{ h.build_nav_icon('fuseki.fuseki', _('Fuseki'), id=pkg.name, icon='diagram-project') }}
+{% endblock %}
+

@@ -17,8 +17,8 @@ def fuseki_show_tools(resource):
     else:
         return False
 
-def fuseki_graph_exists(resource_id):
-    return get_graph(resource_id)
+def fuseki_graph_exists(graph_id):
+    return get_graph(graph_id)
 
 def get_helpers():
     return {

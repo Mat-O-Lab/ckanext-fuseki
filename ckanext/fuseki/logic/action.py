@@ -16,7 +16,7 @@ from typing import Any
 from dateutil.parser import parse as parse_date
 from dateutil.parser import isoparse as parse_iso_date
 
-from ckanext.fuseki import db, backend, tasks
+from ckanext.fuseki import db, backend
 from ckanext.fuseki.helpers import common_member
 from ckanext.fuseki.tasks import update
 
@@ -56,32 +56,29 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         _type_: Resource Id the fuseki graph is delete for if succesfull, or empty dict if not.
     """
     toolkit.check_access("fuseki_delete", context, data_dict)
-    if not data_dict.pop("force", False):
-        resource_id = data_dict["resource_id"]
-        #_check_read_only(context, resource_id)
-    res_id = data_dict["resource_id"]
-    res_exists = backend.resource_exists(res_id)
+    graph_id = toolkit.get_or_bust(data_dict, "pkg_id")
+    res_exists = backend.resource_exists(graph_id)
     model = toolkit.get_or_bust(context, "model")
-    resource = model.Resource.get(data_dict["resource_id"])
+    dataset = model.Package.get(graph_id)
     if res_exists:
-        result = backend.graph_delete(res_id)
-        existing_task = toolkit.get_action("task_status_show")(
-            {}, {"entity_id": res_id, "task_type": "fuseki", "key": "fuseki"}
-        )
-        if existing_task:
-            toolkit.get_action("task_status_delete")(context, {"id": existing_task['id']})
+        result = backend.graph_delete(graph_id)
+        # existing_task = toolkit.get_action("task_status_show")(
+        #     {}, {"entity_id": graph_id, "task_type": "fuseki", "key": "fuseki"}
+        # )
+        # if existing_task:
+        #     toolkit.get_action("task_status_delete")(context, {"id": existing_task['id']})
     else:
-        if resource.extras.get("jena_active") is True:
+        if dataset.extras.get("jena_active") is True:
             log.debug(
-                "jena_active is True but there is no resource {0} in jena".format(
-                    resource.id
+                "jena_active is True but there is no dataset {0} in jena".format(
+                    dataset.id
                 )
             )
         result={}
 
-    if not data_dict.get("filters") and resource.extras.get("jena_active") is True:
-        log.debug("Setting jena_active=False on resource {0}".format(resource.id))
-        set_jena_active_flag(model, data_dict, False)
+    if not data_dict.get("filters") and dataset.extras.get("jena_active") is True:
+        log.debug("Setting jena_active=False on resource {0}".format(dataset.id))
+        #set_jena_active_flag(model, data_dict, False)
 
     return result
 
@@ -131,25 +128,26 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
 
     toolkit.check_access("fuseki_update", context, data_dict)
 
-    if "id" in data_dict:
-        data_dict["resource_id"] = data_dict["id"]
-    res_id = toolkit.get_or_bust(data_dict, "resource_id")
-    resource = toolkit.get_action("resource_show")(
-        {"ignore_auth": True}, {"id": res_id}
-    )
-    
-    log.debug("fuseki_update started for: {}".format(resource))
+    id= toolkit.get_or_bust(data_dict, "pkg_id")
+    try:
+        pkg_dict = toolkit.get_action('package_show')({}, {'id': id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        log.error("cant get package with id: {}, maybe not authorized?".format(id))
+        return False
+
+    res_ids = toolkit.get_or_bust(data_dict, "resource_ids")
+    log.debug("fuseki_update started for dataset: {} and resources: {}".format(id,res_ids))
     res = enqueue_update(
-        resource["id"],
-        resource["name"],
-        resource["url"],
-        resource["package_id"],
+        pkg_dict['name'],
+        pkg_dict['id'],
+        res_ids,
         operation="changed",
     )
-    return res
+    log.debug("enqueue job: {}".format(res))
+    return True
 
 
-def enqueue_update(res_id: str, res_name: str, res_url: str, dataset_id: str, operation: str) -> bool:
+def enqueue_update(dataset_url: str, dataset_id: str, res_ids: list, operation: str) -> bool:
     """Enquery a Update Task as Background Job
 
     Args:
@@ -166,8 +164,8 @@ def enqueue_update(res_id: str, res_name: str, res_url: str, dataset_id: str, op
     queue = DEFAULT_QUEUE_NAME
     # Check if this resource is already in the process of being xloadered
     task = {
-        "entity_id": res_id,
-        "entity_type": "resource",
+        "entity_id": dataset_id,
+        "entity_type": "package",
         "task_type": "fuseki",
         "last_updated": str(datetime.datetime.utcnow()),
         "state": "submitting",
@@ -178,7 +176,7 @@ def enqueue_update(res_id: str, res_name: str, res_url: str, dataset_id: str, op
     }
     try:
         existing_task = toolkit.get_action("task_status_show")(
-            {}, {"entity_id": res_id, "task_type": "fuseki", "key": "fuseki"}
+            {}, {"entity_id": dataset_id, "task_type": "fuseki", "key": "fuseki"}
         )
         assume_task_stale_after = datetime.timedelta(seconds=3600)
         if existing_task.get("state") == "pending":
@@ -211,17 +209,17 @@ def enqueue_update(res_id: str, res_name: str, res_url: str, dataset_id: str, op
     # add this dataset to the queue
     job = toolkit.enqueue_job(
         update,
-        [res_url, res_id, dataset_id, callback_url, task["last_updated"]],
-        title='fuseki {} "{}" {}'.format(operation, res_name, res_url),
+        [dataset_url, dataset_id, res_ids, callback_url, task["last_updated"]],
+        title='fuseki {} "{}" {}'.format(operation, dataset_id, dataset_url),
         queue=queue#, timeout=JOB_TIMEOUT
     )
     # Store details of the job in the db
     try:
-        db.add_pending_job(job.id, job_type=task["task_type"], result_url=callback_url)
+        db.add_pending_job(job.id, job_type=task["task_type"],metadata={"res_ids": res_ids}, result_url=callback_url)
     except sa.exc.IntegrityError:
         raise Exception("job_id {} already exists".format(task["id"]))
 
-    log.debug("Enqueued job {} to {} resource {}".format(job.id, operation, res_name))
+    log.debug("Enqueued job {} to {} resource {}".format(job.id, operation, dataset_id))
 
     value = json.dumps({"job_id": job.id})
     task["value"] = value
@@ -243,16 +241,16 @@ def fuseki_hook(context: Context, data_dict: dict[str, Any]):
 
     """
     
-    metadata, status, job_info = toolkit.get_or_bust(data_dict, ['metadata', 'status', 'job_info'])
+    metadata, status, job_info= toolkit.get_or_bust(data_dict, ['metadata', 'status', 'job_info'])
 
-    res_id = toolkit.get_or_bust(metadata, 'resource_id')
+    pkg_id = toolkit.get_or_bust(metadata, 'pkg_id')
 
     # Pass metadata, not data_dict, as it contains the resource id needed
     # on the auth checks
     #toolkit.check_access('xloader_submit', context, metadata)
 
     task = toolkit.get_action('task_status_show')(context, {
-        'entity_id': res_id,
+        'entity_id': pkg_id,
         'task_type': 'fuseki',
         'key': 'fuseki'
     })
@@ -262,22 +260,22 @@ def fuseki_hook(context: Context, data_dict: dict[str, Any]):
     task['error'] = data_dict.get('error')
     #task['task_info'] = job_info
     resubmit = False
-
+    log.debug("task update for entity_id {} with: {}".format(pkg_id, task))
     if status in ('complete', 'running_but_viewable'):
         # Create default views for resource if necessary (only the ones that
         # require data to be in the DataStore)
-        resource_dict = toolkit.get_action('resource_show')(
-            context, {'id': res_id})
+        # resource_dict = toolkit.get_action('resource_show')(
+        #     context, {'id': pkg_id})
 
         dataset_dict = toolkit.get_action('package_show')(
-            context, {'id': resource_dict['package_id']})
+            context, {'id': pkg_id})
 
         # Check if the uploaded file has been modified in the meantime
-        if (resource_dict.get('last_modified')
+        if (dataset_dict.get('last_modified')
                 and metadata.get('task_created')):
             try:
                 last_modified_datetime = parse_date(
-                    resource_dict['last_modified'])
+                    dataset_dict['last_modified'])
                 task_created_datetime = parse_date(metadata['task_created'])
                 if last_modified_datetime > task_created_datetime:
                     log.debug('Uploaded file more recent: %s > %s',
@@ -286,11 +284,11 @@ def fuseki_hook(context: Context, data_dict: dict[str, Any]):
             except ValueError:
                 pass
         # Check if the URL of the file has been modified in the meantime
-        elif (resource_dict.get('url')
+        elif (dataset_dict.get('url')
               and metadata.get('original_url')
-              and resource_dict['url'] != metadata['original_url']):
+              and dataset_dict['url'] != metadata['original_url']):
             log.debug('URLs are different: %s != %s',
-                      resource_dict['url'], metadata['original_url'])
+                      dataset_dict['url'], metadata['original_url'])
             resubmit = True
         #mark job completed in db
         log.debug(task)
@@ -308,9 +306,9 @@ def fuseki_hook(context: Context, data_dict: dict[str, Any]):
 
     if resubmit:
         log.debug('Resource %s has been modified, '
-                  'resubmitting to fuseki', res_id)
+                  'resubmitting to fuseki', pkg_id)
         toolkit.get_action('fuseki_update')(
-            context, {'resource_id': res_id})
+            context, {'pkg_id': pkg_id})
         
 
 @toolkit.side_effect_free
@@ -326,15 +324,16 @@ def fuseki_update_status(
     '''
     toolkit.check_access('fuseki_update_status', context, data_dict)
     
-    if 'id' in data_dict:
-        data_dict['resource_id'] = data_dict['id']
-    res_id = toolkit.get_or_bust(data_dict, 'resource_id')
+    pkg_id = toolkit.get_or_bust(data_dict, 'pkg_id')
     job_id=None
-    
     try:
-        task = toolkit.get_action('task_status_show')({}, { 'entity_id': res_id,'task_type': 'fuseki', 'key': 'fuseki'})
+        task = toolkit.get_action('task_status_show')(context, {
+        'entity_id': pkg_id,
+        'task_type': 'fuseki',
+        'key': 'fuseki'
+        })
     except:
-        status=None
+        status={}
     else:
         value = json.loads(task['value'])
         job_id = value.get('job_id')

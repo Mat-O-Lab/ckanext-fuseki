@@ -71,7 +71,7 @@ def get_graph(graph_id):
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
-    result = False
+
     try:
         jena_dataset_stats_url = jena_base_url + "$/stats/{graph_id}".format(
             graph_id=graph_id
@@ -83,7 +83,7 @@ def get_graph(graph_id):
         if jena_dataset_stats_res.status_code == requests.codes.ok:
             result = jena_base_url + "{graph_id}".format(graph_id=graph_id)
     except Exception as e:
-        pass
+        result = False
     return result
 
 def graph_create(graph_id: str):
