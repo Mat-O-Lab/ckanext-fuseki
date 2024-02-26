@@ -3,6 +3,9 @@
 import logging
 from ckan.common import config
 import requests
+from rdflib import Graph
+
+# from io import BytesIO
 
 log = logging.getLogger(__name__)
 CHUNK_SIZE = 16 * 1024  # 16kb
@@ -32,14 +35,24 @@ def resource_upload(resource, graph_url):
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
     response = requests.get(resource["url"])
+    response.raise_for_status()
+    # file_object = BytesIO(response.content)
     file_type = resource["mimetype"]
+    # parse and reserialize json-ld data because fuseki seams unable to read compacted json-ld
+    if "ld+json" in file_type:
+        file_data = (
+            Graph()
+            .parse(data=response.text, format="json-ld")
+            .serialize(format="json-ld")
+        )
+    else:
+        file_data = response.text
     # file_type=resource['format']
-    if file_type == "application/json":
-        file_type = "application/json-ld"
     log.debug(file_type)
     # file_data = response.text
     log.debug(response.headers)
-    files = {"file": (resource["name"], response.content, file_type, {"Expires": "0"})}
+    files = {"file": (resource["name"], file_data, file_type, {"Expires": "0"})}
+    # files = {"file": (resource["name"], file_object)}
     jena_upload_res = requests.post(
         graph_url, files=files, auth=(jena_username, jena_password)
     )
