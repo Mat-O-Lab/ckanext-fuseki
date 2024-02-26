@@ -25,11 +25,11 @@ class JenaPlugin(p.SingletonPlugin):
 
     def update_config(self, config):
         required_keys = "ckanext.fuseki.url ckanext.fuseki.username ckanext.fuseki.password ckanext.fuseki.formats"
-        for key in required_keys:
-            if config.get(key) is None:
-                raise RuntimeError(
-                    "Required configuration option {0} not found.".format(key)
-                )
+        # for key in required_keys:
+        #     if config.get(key) is None:
+        #         raise RuntimeError(
+        #             "Required configuration option {0} not found.".format(key)
+        #         )
         self.config = config
         p.toolkit.add_template_directory(config, "templates")
 
