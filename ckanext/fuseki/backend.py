@@ -2,13 +2,11 @@
 
 import logging
 from ckan.common import config
-import ckan.plugins.toolkit as toolkit
-import ckan.logic as logic
 import requests
-import json
 
 log = logging.getLogger(__name__)
 CHUNK_SIZE = 16 * 1024  # 16kb
+
 
 def graph_delete(graph_id: str):
     jena_base_url = config.get("ckanext.fuseki.url")
@@ -34,19 +32,20 @@ def resource_upload(resource, graph_url):
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
     response = requests.get(resource["url"])
-    file_type=resource['mimetype']
-    #file_type=resource['format']
-    if file_type=="application/json":
-        file_type="application/json-ld"
+    file_type = resource["mimetype"]
+    # file_type=resource['format']
+    if file_type == "application/json":
+        file_type = "application/json-ld"
     log.debug(file_type)
-    #file_data = response.text
+    # file_data = response.text
     log.debug(response.headers)
-    files = {"file": (resource["name"], response.content, file_type,{"Expires": "0"})}
+    files = {"file": (resource["name"], response.content, file_type, {"Expires": "0"})}
     jena_upload_res = requests.post(
         graph_url, files=files, auth=(jena_username, jena_password)
     )
     jena_upload_res.raise_for_status()
     return True
+
 
 def resource_exists(id):
     jena_base_url = config.get("ckanext.fuseki.url")
@@ -67,6 +66,7 @@ def resource_exists(id):
         pass
     return res_exists
 
+
 def get_graph(graph_id):
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
@@ -86,6 +86,7 @@ def get_graph(graph_id):
         result = False
     return result
 
+
 def graph_create(graph_id: str):
     fields = [dict(type="text", id="rdf")]
     # model = _get_or_bust(context, 'model')
@@ -102,34 +103,3 @@ def graph_create(graph_id: str):
     )
     jena_dataset_create_res.raise_for_status()
     return jena_base_url + "{graph_id}".format(graph_id=graph_id)
-
-# def graph_create(resource):
-#     fields = [dict(type="text", id="rdf")]
-#     # model = _get_or_bust(context, 'model')
-#     # resource = model.Resource.get(data_dict['resource_id'])
-#     jena_base_url = config.get("ckanext.fuseki.url")
-#     jena_username = config.get("ckanext.fuseki.username")
-#     jena_password = config.get("ckanext.fuseki.password")
-
-#     jena_dataset_create_url = jena_base_url + "$/datasets"
-#     jena_dataset_create_res = requests.post(
-#         jena_dataset_create_url,
-#         params={"dbName": resource['id'], "dbType": "mem"},
-#         auth=(jena_username, jena_password),
-#     )
-#     jena_dataset_create_res.raise_for_status()
-#     jena_upload_url = jena_base_url
-#     jena_upload_url += "{resource_id}/data".format(resource_id=resource['id'])
-#     file_name = resource["name"]
-#     file_type = resource["mimetype"]
-#     response = requests.get(resource["url"])
-#     file_data = response.text
-#     log.debug(file_data[:200])
-#     files = {"file": (file_name, file_data, file_type, {"Expires": "0"})}
-#     jena_upload_res = requests.post(
-#         jena_upload_url, files=files, auth=(jena_username, jena_password)
-#     )
-#     jena_upload_res.raise_for_status()
-
-#     return jena_base_url + "{resource_id}/query".format(resource_id=resource['id'])
-

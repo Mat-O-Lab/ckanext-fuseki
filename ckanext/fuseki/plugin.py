@@ -1,24 +1,16 @@
 # encoding: utf-8
 
 import logging
-import os
 
 import ckan.plugins as p
-import ckan.logic as logic
 import ckan.model as model
-from ckan.plugins.toolkit import get_action, add_template_directory
-from ckan.model.core import State
-from ckan.common import config, request
-from ckan.lib import uploader
 from typing import Any
 
 import ckanext.fuseki.logic.action as action
 import ckanext.fuseki.logic.auth as auth
-import ckanext.fuseki.backend as backend
 from ckanext.fuseki import helpers, views
 
 log = logging.getLogger(__name__)
-
 
 
 class JenaPlugin(p.SingletonPlugin):
@@ -32,24 +24,25 @@ class JenaPlugin(p.SingletonPlugin):
     # IConfigurer
 
     def update_config(self, config):
-        required_keys = "ckanext.fuseki.url"
-        # for key in required_keys:
-        #     if config.get(key) is None:
-        #         raise RuntimeError('Required configuration option {0} not found.'.format(key))
+        required_keys = "ckanext.fuseki.url ckanext.fuseki.username ckanext.fuseki.password ckanext.fuseki.formats"
+        for key in required_keys:
+            if config.get(key) is None:
+                raise RuntimeError(
+                    "Required configuration option {0} not found.".format(key)
+                )
         self.config = config
-        add_template_directory(config, "templates")
+        p.toolkit.add_template_directory(config, "templates")
 
     # IActions
 
     def get_actions(self):
         actions = action.get_actions()
         return actions
-    
+
     # IAuthFunctions
 
     def get_auth_functions(self):
-        return auth.get_auth_functions() 
-
+        return auth.get_auth_functions()
 
     # IResourceController
 
