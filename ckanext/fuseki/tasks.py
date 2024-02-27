@@ -19,7 +19,7 @@ import logging
 # log = __import__("logging").getLogger(__name__)
 
 CKAN_URL = os.environ.get("CKAN_SITE_URL", "http://localhost:5000")
-
+FUSEKI_CKAN_TOKEN = os.environ.get("FUSEKI_CKAN_TOKEN", "")
 SSL_VERIFY = asbool(os.environ.get("FUSEKI_SSL_VERIFY", True))
 if not SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
@@ -63,7 +63,7 @@ def update(
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
 
-    callback_fuseki_hook(callback_url, job_dict=job_dict)
+    callback_fuseki_hook(callback_url, api_key=FUSEKI_CKAN_TOKEN, job_dict=job_dict)
     _graph = backend.get_graph(dataset_id)
     logger.debug("{} {}".format(dataset_id, res_ids))
     if _graph:
@@ -75,7 +75,7 @@ def update(
     for res_id in res_ids:
         _res = get_action("resource_show")({"ignore_auth": True}, {"id": res_id})
         try:
-            backend.resource_upload(_res, _graph)
+            backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN)
         except Exception as e:
             logger.error(
                 "Upload {} to graph in store failed: {}".format(_res["url"], e)
@@ -87,7 +87,7 @@ def update(
     job_dict["status"] = "complete"
     callback_fuseki_hook(
         callback_url,
-        # api_key=CSVWMAPANDTRANSFORM_TOKEN,
+        api_key=FUSEKI_CKAN_TOKEN,
         job_dict=job_dict,
     )
     return "error" if errored else None
@@ -122,11 +122,17 @@ def resource_search(dataset_id, res_name):
     return None
 
 
-def callback_fuseki_hook(result_url, job_dict):
+def callback_fuseki_hook(result_url, api_key, job_dict):
     """Tells CKAN about the result of the fuseki (i.e. calls the callback
     function 'fuseki_hook'). Usually called by the fuseki queue job.
     """
     headers = {"Content-Type": "application/json"}
+    if api_key:
+        if ":" in api_key:
+            header, key = api_key.split(":")
+        else:
+            header, key = "Authorization", api_key
+        headers[header] = key
     try:
         result = requests.post(
             result_url,

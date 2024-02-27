@@ -7,8 +7,10 @@ Extension automatically generating csvw metadata for uploaded textual tabular da
 
 ## Requirements
 Needs a running instance of the jena fuseki. 
-Point at it through env variables
+Point at it through env variables. Also needed is a Api Token for an account with the right privaledges to make the background job work on private datasets and ressources.
+
 ```bash
+FUSEKI_CKAN_TOKEN=${CKAN_API_TOKEN}
 CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
 CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
 CKANINI__CKANEXT__FUSEKI__PASSWORD = *****

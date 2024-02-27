@@ -30,11 +30,18 @@ def graph_delete(graph_id: str):
     return result
 
 
-def resource_upload(resource, graph_url):
+def resource_upload(resource, graph_url, api_key=""):
     graph_url += "/data"
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
-    response = requests.get(resource["url"])
+    headers = {}
+    if api_key:
+        if ":" in api_key:
+            header, key = api_key.split(":")
+        else:
+            header, key = "Authorization", api_key
+        headers[header] = key
+    response = requests.get(resource["url"], headers=headers)
     response.raise_for_status()
     # file_object = BytesIO(response.content)
     file_type = resource["mimetype"]
