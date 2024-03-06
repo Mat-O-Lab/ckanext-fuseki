@@ -21,10 +21,10 @@ class FusekiView(MethodView):
         if "create/update" in request.form:
             to_upload = request.form.getlist("resid")
             log.debug("ressource ids to upload: {}".format(to_upload))
-
-            toolkit.get_action("fuseki_update")(
-                {}, {"pkg_id": pkg_dict["id"], "resource_ids": to_upload}
-            )
+            if to_upload:
+                toolkit.get_action("fuseki_update")(
+                    {}, {"pkg_id": pkg_dict["id"], "resource_ids": to_upload}
+                )
         elif "delete" in request.form:
             toolkit.get_action("fuseki_delete")(
                 {},
