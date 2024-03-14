@@ -1,4 +1,4 @@
-[![Tests](https://github.com/Mat-O-Lab/ckanext-fuseki/workflows/Tests/badge.svg?branch=main)](https://github.com/Mat-O-Lab/ckanext-fuseki/actions)
+[![Tests](https://github.com/Mat-O-Lab/ckanext-fuseki/actions/workflows/test.yml/badge.svg)](https://github.com/Mat-O-Lab/ckanext-fuseki/actions/workflows/test.yml)
 
 # ckanext-fuseki
 
