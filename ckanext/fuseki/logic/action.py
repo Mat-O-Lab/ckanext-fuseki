@@ -4,10 +4,17 @@ import logging
 import json
 
 from ckan import model
-from ckan.types import Context
+import ckan.plugins.toolkit as toolkit
+
+if toolkit.check_ckan_version("2.10"):
+    from ckan.types import Context
+else:
+
+    class Context(dict):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 
-import ckan.plugins.toolkit as toolkit
 import datetime, os
 from typing import Any
 from dateutil.parser import parse as parse_date
