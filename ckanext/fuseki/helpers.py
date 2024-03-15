@@ -5,8 +5,8 @@ import re, os
 
 
 # Retrieve the value of a configuration option
-FUSEKI_URL = os.environ.get("CKANINI__CKANEXT__DCATDE__FUSEKI__TRIPLESTORE__URL", "/")
-SPARKLIS_URL = os.environ.get("CKANINI__CKANEXT__DCATDE__SPARKLIS__URL", "")
+FUSEKI_URL = os.environ.get("CKANINI__CKANEXT__FUSEKI__URL", "/")
+SPARKLIS_URL = os.environ.get("CKANINI__CKANEXT__FUSEKI__SPARKLIS__URL", "")
 
 
 def common_member(a, b):

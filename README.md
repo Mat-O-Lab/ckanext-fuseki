@@ -78,6 +78,12 @@ CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig lon
 ```
 else it will react to the listed formats by default
 
+if a sparklis web app is available you can set
+```bash
+CKANINI__CKANEXT__FUSEKI__SPARKLIS__URL = http://<sparklis_host>:<sparklis_port>/
+```
+the query button will redirect to sparklis instead.
+
 # Acknowledgements
 
 This projects work is based on a fork of the repo [etri-odp/ckanext-jena](https://github.com/etri-odp/ckanext-jena) and we like to thank the authors of that project for sharing there work.
