@@ -1,7 +1,12 @@
 # encoding: utf-8
 
 from ckanext.fuseki.backend import get_graph
-import re
+import re, os
+
+
+# Retrieve the value of a configuration option
+FUSEKI_URL = os.environ.get("CKANINI__CKANEXT__DCATDE__FUSEKI__TRIPLESTORE__URL", "/")
+SPARKLIS_URL = os.environ.get("CKANINI__CKANEXT__DCATDE__SPARKLIS__URL", "")
 
 
 def common_member(a, b):
@@ -22,8 +27,20 @@ def fuseki_graph_exists(graph_id):
     return get_graph(graph_id)
 
 
+def fuseki_query_url(pkg_dict):
+    if not SPARKLIS_URL:
+        # fuseki query interface
+        url = "{}#/dataset/{}/query".format(FUSEKI_URL, pkg_dict["id"])
+    else:
+        url = "{}?title={}&endpoint={}".format(
+            SPARKLIS_URL, pkg_dict["name"], pkg_dict["id"]
+        )
+    return url
+
+
 def get_helpers():
     return {
         "fuseki_show_tools": fuseki_show_tools,
         "fuseki_graph_exists": fuseki_graph_exists,
+        "fuseki_query_url": fuseki_query_url,
     }

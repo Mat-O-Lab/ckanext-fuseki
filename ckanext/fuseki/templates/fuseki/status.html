@@ -13,8 +13,7 @@
   <button class="btn btn-danger" name="delete" type="submit">
     <i class="fa fa-trash"></i> {{ _('Delete') }}
   </button>
-  <a class="btn btn-primary mb-0"
-    href="/sparklis/?title={{pkg_dict.name}}&endpoint={{ h.fuseki_graph_exists(pkg_dict.id)|safe }}" role="button">
+  <a class="btn btn-primary mb-0" href="{{ h.fuseki_query_url(pkg_dict)|safe }}" role="button">
     <i class="fa fa-play"></i> {{ _('Query') }}
   </a>
   {% endif %}

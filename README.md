@@ -2,49 +2,22 @@
 
 # ckanext-fuseki
 
-Extension automatically generating csvw metadata for uploaded textual tabular data. It uploads the data of the first table documented into a datastore for the source csv file.
-**should be used as replacement for datapusher**
+Extension create a new tab in the dataset view that enables you to upload selcted resources to a connected jena fuseki triple store. 
 
 ## Requirements
 Needs a running instance of the jena fuseki. 
 Point at it through env variables. Also needed is a Api Token for an account with the right privaledges to make the background job work on private datasets and ressources.
 
-```bash
-FUSEKI_CKAN_TOKEN=${CKAN_API_TOKEN}
-CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
-CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
-CKANINI__CKANEXT__FUSEKI__PASSWORD = *****
-CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
-```
-or ckan.ini parameters.
-```bash
-ckan.jena.fuseki.url = http://<fuseki_host>:<fuseki_port>/
-ckan.jena.fuseki.username = <admin_user>
-ckan.jena.fuseki.password = *****
-```
-
-
-You can set the default formats to annotate by setting the env variable CSVTOCSVW_FORMATS for example
-```bash
-CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
-```
-else it will react to the listed formats by default
+* Apache Jena and Fuseki server need to be running.
+* <optional> A sparklis web app for querying the dataset, see optional folder for a container deployment of jena fuseki and sparklis.
 
 ## Purpose
 
 ckanext-fuseki is an extension for enabling the semantic aspect of CKAN with Apache Jena.
 
-This extension provides an ability to let users store a certain semantic resource (e.g. rdf, ttl, owl) in Apache Jena and perform SPARQL semantic queries.
+This extension provides an ability to let users store a set of semantic resource (e.g. rdf, ttl, owl) in Apache Jena and perform SPARQL semantic queries.
 
 ### Notes:
-
-* Apache Jena and Fuseki server need to be running.
-* jena_search_sparql api can be called with ``resource_id`` and ``q`` parameters for semantic queries.
-
-**TODO:** For example, you might want to mention here which versions of CKAN this
-extension works with.
-
-If your extension works across different versions you can add the following table:
 
 Compatibility with core CKAN versions:
 
@@ -53,13 +26,6 @@ Compatibility with core CKAN versions:
 | 2.8 and arlier  | not tested    |
 | 2.9             | no    |
 | 2.10            | yes    |
-
-Suggested values:
-
-* "yes"
-* "not tested" - I can't think of a reason why it wouldn't work
-* "not yet" - there is an intention to get it working
-* "no"
 
 
 ## Installation
@@ -92,13 +58,25 @@ To install ckanext-fuseki:
 
 ## Config settings
 
-None at present
+```bash
+FUSEKI_CKAN_TOKEN=${CKAN_API_TOKEN}
+CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
+CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
+CKANINI__CKANEXT__FUSEKI__PASSWORD = *****
+```
+or ckan.ini parameters.
+```bash
+ckan.jena.fuseki.url = http://<fuseki_host>:<fuseki_port>/
+ckan.jena.fuseki.username = <admin_user>
+ckan.jena.fuseki.password = *****
+```
+If no Api Token is given, only public resources can be uploaded to the triple store!
 
-**TODO:** Document any optional config settings here. For example:
-
-	# The minimum number of hours to wait before re-checking a resource
-	# (optional, default: 24).
-	ckanext.csvtocsvw.some_setting = some_default_value
+You can set the default formats to preselected for upload by setting the formats,
+```bash
+CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
+```
+else it will react to the listed formats by default
 
 # Acknowledgements
 
