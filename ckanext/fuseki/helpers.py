@@ -32,8 +32,8 @@ def fuseki_query_url(pkg_dict):
         # fuseki query interface
         url = "{}#/dataset/{}/query".format(FUSEKI_URL, pkg_dict["id"])
     else:
-        url = "{}?title={}&endpoint={}".format(
-            SPARKLIS_URL, pkg_dict["name"], pkg_dict["id"]
+        url = "{}?title={}&endpoint={}/{}".format(
+            SPARKLIS_URL, pkg_dict["name"], FUSEKI_URL, pkg_dict["id"]
         )
     return url
 
