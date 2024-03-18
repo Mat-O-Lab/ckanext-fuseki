@@ -2,11 +2,13 @@
 
 # ckanext-fuseki
 
-Extension create a new tab in the dataset view that enables you to upload selcted resources to a connected jena fuseki triple store. 
+Extension creates a new tab in the dataset view that enables you to upload selected resources to a connected jena fuseki triple store. 
+
+![image](ckan-fuseki.png)
 
 ## Requirements
-Needs a running instance of the jena fuseki. 
-Point at it through env variables. Also needed is a Api Token for an account with the right privaledges to make the background job work on private datasets and ressources.
+Needs a running instance of jena fuseki, see for example docker-compose file in optional folder. 
+Point at it through env variables. Also needed is an api-token for an account with the admin privileges to make the background job work on private datasets and resources.
 
 * Apache Jena and Fuseki server need to be running.
 * <optional> A sparklis web app for querying the dataset, see optional folder for a container deployment of jena fuseki and sparklis.
@@ -21,39 +23,39 @@ This extension provides an ability to let users store a set of semantic resource
 
 Compatibility with core CKAN versions:
 
-| CKAN version    | Compatible?   |
+| CKAN version    | Compatible?   |
 | --------------- | ------------- |
-| 2.8 and arlier  | not tested    |
-| 2.9             | no    |
-| 2.10            | yes    |
+| 2.8 and earlier  | not tested    |
+| 2.9             | yes    |
+| 2.10            | yes    |
 
 
 ## Installation
 
-**TODO:** Add any additional install steps to the list below.
-   For example installing any non-Python dependencies or adding any required
-   config settings.
+**TODO:** Add any additional installation steps to the list below.
+   For example, installing any non-Python dependencies or adding any required
+   config settings.
 
 To install ckanext-fuseki:
 
 1. Activate your CKAN virtual environment, for example:
 
-     . /usr/lib/ckan/default/bin/activate
+     . /usr/lib/ckan/default/bin/activate
 
 2. Clone the source and install it on the virtualenv
 
-    git clone https://github.com/Mat-O-Lab/ckanext-fuseki.git
-    cd ckanext-fuseki
-    pip install -e .
-	pip install -r requirements.txt
+    git clone https://github.com/Mat-O-Lab/ckanext-fuseki.git
+    cd ckanext-fuseki
+    pip install -e .
+   pip install -r requirements.txt
 
 3. Add `fuseki` to the `ckan.plugins` setting in your CKAN
-   config file (by default the config file is located at
-   `/etc/ckan/default/ckan.ini`).
+   config file (by default the config file is located at
+   `/etc/ckan/default/ckan.ini`).
 
-4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu:
+4. Restart CKAN. For example, if you've deployed CKAN with Apache on Ubuntu:
 
-     sudo service apache2 reload
+     sudo service apache2 reload
 
 
 ## Config settings
@@ -78,7 +80,7 @@ CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig lon
 ```
 else it will react to the listed formats by default
 
-if a sparklis web app is available you can set
+if a sparklis web app is available, you can set
 ```bash
 CKANINI__CKANEXT__FUSEKI__SPARKLIS__URL = http://<sparklis_host>:<sparklis_port>/
 ```
@@ -86,5 +88,5 @@ the query button will redirect to sparklis instead.
 
 # Acknowledgements
 
-This projects work is based on a fork of the repo [etri-odp/ckanext-jena](https://github.com/etri-odp/ckanext-jena) and we like to thank the authors of that project for sharing there work.
+This project's work is based on a fork of the repo [etri-odp/ckanext-jena](https://github.com/etri-odp/ckanext-jena), and we like to thank the authors of that project for sharing their work.
 It was supported by Institute for Information & communications Technology Promotion (IITP) grant funded by the Korea government (MSIT) (No.2017-00253, Development of an Advanced Open Data Distribution Platform based on International Standards)

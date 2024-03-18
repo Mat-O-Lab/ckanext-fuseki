@@ -98,18 +98,32 @@
 
 {% if status and status.logs %}
 <h3>{{ _('Graph Update Log') }}</h3>
-{% for item in status.logs|sort(attribute='timestamp') %}
-{% set level = 'info' if item.level == 'DEBUG' else item.level %}
-{% set popover_content = 'test' %}
-<div class="alert alert-{{level |lower }} mb-0 mt-3" role="alert">
-  {% for line in item.message.strip().split('\n') %}
-  {{ line | urlize }}<br />
+<ul class="activity">
+  {% for item in status.logs|sort(attribute='timestamp') %}
+  {% set level = 'info' if item.level == 'DEBUG' else item.level %}
+  {% if item.level == 'INFO' %}
+  {% set icon = 'check'%}
+  {% elif item.level == 'DEBUG' %}
+  {% set icon = 'bug-slash'%}
+  {% else %}
+  {% set icon = 'exclamation'%}
+  {% endif %}
+  {% set class = 'failure' if icon == 'exclamation' else ' success' %}
+  {% set popover_content = 'test' %}
+  <li class="item {{ class }}">
+    <i class="fa icon fa-{{icon}}"></i>
+    <div class="alert alert-{{level |lower }} mb-0 mt-3" role="alert">
+      {% for line in item.message.strip().split('\n') %}
+      {{ line | urlize }}<br />
+      {% endfor %}
+    </div>
+    <span class="date" title="{{ h.render_datetime(item.timestamp, with_hours=True) }}">
+      {{ h.time_ago_from_timestamp(item.timestamp) }}
+    </span>
+  </li>
   {% endfor %}
-</div>
-<span class="date" title="{{ h.render_datetime(item.timestamp, with_hours=True) }}">
-  {{ h.time_ago_from_timestamp(item.timestamp) }}
-</span>
-{% endfor %}
+</ul>
+
 {% endif %}
 {% endif %}
 {% endblock %}
