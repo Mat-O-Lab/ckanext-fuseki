@@ -17,7 +17,7 @@ ckan.module('fuseki', function (jQuery) {
       console.log("Initialized Fuseki for element: ", this.el);
       var html_length;
       html_length = 0;
-      var updateInterval = setInterval(function () {
+      var update = function () { // define the update function
         jQuery.ajax({
           url: "fuseki/status",
           type: 'GET',
@@ -39,8 +39,9 @@ ckan.module('fuseki', function (jQuery) {
           error: function (xhr, status, error) {
             console.log('Error:', error);
           }
-        });
-      }, 2000); // set the interval to 5 seconds (5000 milliseconds)
+        };
+      update(); // call the update function immediately after initialization
+      var updateInterval = setInterval(update, 20000); // set the interval to 20 seconds (20000 milliseconds)
     }
   };
 });
