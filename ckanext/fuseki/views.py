@@ -54,8 +54,29 @@ class FusekiView(MethodView):
         )
 
 
+class StatusView(MethodView):
+
+    def get(self, id: str):
+        pkg_dict = {}
+        try:
+            pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
+        except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+            base.abort(404, "Resource not found")
+        status = toolkit.get_action("fuseki_update_status")(
+            {}, {"pkg_id": pkg_dict["id"]}
+        )
+        return base.render(
+            "fuseki/logs.html",
+            extra_vars={"status": status},
+        )
+
+
 blueprint.add_url_rule(
     "/dataset/<id>/fuseki", view_func=FusekiView.as_view(str("fuseki"))
+)
+blueprint.add_url_rule(
+    "/dataset/<id>/fuseki/status",
+    view_func=StatusView.as_view(str("status")),
 )
 
 

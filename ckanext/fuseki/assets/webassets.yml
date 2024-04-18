@@ -1,0 +1,4 @@
+fuseki:
+  output: fuseki/fuseki.js
+  contents:
+    - fuseki.js

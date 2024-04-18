@@ -3,6 +3,7 @@
 import logging, os
 
 import ckan.plugins as p
+from ckan.common import CKANConfig
 import ckan.model as model
 from typing import Any
 
@@ -23,7 +24,7 @@ class JenaPlugin(p.SingletonPlugin):
 
     # IConfigurer
 
-    def update_config(self, config):
+    def update_config(self, config: CKANConfig):
         required_keys = "ckanext.fuseki.url ckanext.fuseki.username ckanext.fuseki.password ckanext.fuseki.formats"
         for key in required_keys.split():
             if config.get(key) is None:
@@ -37,6 +38,7 @@ class JenaPlugin(p.SingletonPlugin):
                     )
         self.config = config
         p.toolkit.add_template_directory(config, "templates")
+        p.toolkit.add_resource("assets", "fuseki")
 
     # IActions
 
