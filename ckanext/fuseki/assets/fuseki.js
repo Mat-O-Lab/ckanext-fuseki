@@ -41,7 +41,7 @@ ckan.module('fuseki', function (jQuery) {
           }
         };
       update(); // call the update function immediately after initialization
-      var updateInterval = setInterval(update, 20000); // set the interval to 20 seconds (20000 milliseconds)
+      var updateInterval = setInterval(update, 5000); // set the interval to 20 seconds (20000 milliseconds)
     }
   };
 });
