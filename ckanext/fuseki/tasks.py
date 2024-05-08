@@ -307,7 +307,6 @@ def file_upload(
     response = requests.post(url, headers=headers, data=mp_encoder, verify=SSL_VERIFY)
     response.raise_for_status()
     r = response.json()
-    logger.debug("file {} uploaded at: {}".format(filename, r))
     return r
 
 
