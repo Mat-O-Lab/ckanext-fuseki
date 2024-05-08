@@ -13,6 +13,8 @@ else:
     class Context(dict):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
+
+
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 
 import datetime, os
@@ -21,7 +23,7 @@ from dateutil.parser import parse as parse_date
 from dateutil.parser import isoparse as parse_iso_date
 
 from ckanext.fuseki import db, backend
-from ckanext.fuseki.tasks import update
+from ckanext.fuseki.tasks import update, SPARQL_RES_NAME, resource_search
 
 import sqlalchemy as sa
 
@@ -68,6 +70,9 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         existing_task = toolkit.get_action("task_status_show")(
             {}, {"entity_id": graph_id, "task_type": "fuseki", "key": "fuseki"}
         )
+        # delete SPARQL link
+        link_id = resource_search(graph_id, SPARQL_RES_NAME)
+        toolkit.get_action("resource_delete")({}, link_id)
         if existing_task:
             toolkit.get_action("task_status_delete")(
                 context, {"id": existing_task["id"]}

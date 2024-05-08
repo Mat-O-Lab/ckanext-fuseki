@@ -1,3 +1,49 @@
+{% import 'macros/form.html' as form %}
+<form class="add-to-group" method="post">
+    {{ h.csrf_input() }}
+    <button class="btn btn-secondary" name="create/update" type="submit">
+        <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
+    </button>
+    {% if h.fuseki_graph_exists(pkg_dict.id) %}
+    <button class="btn btn-danger" name="delete" type="submit">
+        <i class="fa fa-trash"></i> {{ _('Delete') }}
+    </button>
+    <a class="btn btn-primary mb-0" href="{{ h.fuseki_query_url(pkg_dict)|safe }}" role="button">
+        <i class="fa fa-play"></i> {{ _('Query') }}
+    </a>
+    {% endif %}
+    <hr class="mt-0">
+    <table class="table table-bordered table-sm m-0">
+        <thead class="">
+            <tr>
+                <th>{{ _('upload') }}</th>
+                <th>{{ _('name') }}</th>
+                <th>{{ _('format') }}</th>
+                <th>{{ _('mime type') }}</th>
+                <th>{{ _('size') }} [B]</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for resource in pkg_dict.resources %}
+            <tr>
+                <td>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name='resid' id="ckeck-{{resource.id}}"
+                            value={{resource.id}} {% if status.metadata is defined %} {% if resource.id in
+                            status.metadata.res_ids%}checked='true' {% endif %} {% elif h.fuseki_show_tools(resource)
+                            %}checked='true' {% endif %}>
+                    </div>
+                </td>
+                <td>{{resource.name}}</td>
+                <td>{{resource.format}}</td>
+                <td>{{resource.mimetype}}</td>
+                <td>{{resource.size}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
+<hr class="mt-0">
 {% if status %}
 {% if status.error and status.error.message %}
 {% set show_table = false %}

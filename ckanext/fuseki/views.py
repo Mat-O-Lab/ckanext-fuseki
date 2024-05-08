@@ -67,7 +67,7 @@ class StatusView(MethodView):
         )
         return base.render(
             "fuseki/logs.html",
-            extra_vars={"status": status},
+            extra_vars={"pkg_dict": pkg_dict, "status": status},
         )
 
 

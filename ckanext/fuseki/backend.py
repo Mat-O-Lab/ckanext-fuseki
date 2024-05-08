@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import logging
+import os, logging
 from ckan.common import config
 import requests
 from rdflib import Graph
+from ckan.plugins.toolkit import asbool
+
 
 # from io import BytesIO
 
 log = logging.getLogger(__name__)
 CHUNK_SIZE = 16 * 1024  # 16kb
+SSL_VERIFY = asbool(os.environ.get("FUSEKI_SSL_VERIFY", True))
+if not SSL_VERIFY:
+    requests.packages.urllib3.disable_warnings()
 
 
 def graph_delete(graph_id: str):
@@ -21,7 +26,9 @@ def graph_delete(graph_id: str):
             graph_id=graph_id
         )
         jena_dataset_delete_res = requests.delete(
-            jena_dataset_delete_url, auth=(jena_username, jena_password)
+            jena_dataset_delete_url,
+            auth=(jena_username, jena_password),
+            verify=SSL_VERIFY,
         )
         jena_dataset_delete_res.raise_for_status()
     except Exception as e:
@@ -41,7 +48,7 @@ def resource_upload(resource, graph_url, api_key=""):
         else:
             header, key = "Authorization", api_key
         headers[header] = key
-    response = requests.get(resource["url"], headers=headers)
+    response = requests.get(resource["url"], headers=headers, verify=SSL_VERIFY)
     response.raise_for_status()
     # file_object = BytesIO(response.content)
     file_type = resource["mimetype"]
@@ -61,7 +68,7 @@ def resource_upload(resource, graph_url, api_key=""):
     files = {"file": (resource["name"], file_data, file_type, {"Expires": "0"})}
     # files = {"file": (resource["name"], file_object)}
     jena_upload_res = requests.post(
-        graph_url, files=files, auth=(jena_username, jena_password)
+        graph_url, files=files, auth=(jena_username, jena_password), verify=SSL_VERIFY
     )
     jena_upload_res.raise_for_status()
     return True
@@ -77,7 +84,9 @@ def resource_exists(id):
             resource_id=id
         )
         jena_dataset_stats_res = requests.get(
-            jena_dataset_stats_url, auth=(jena_username, jena_password)
+            jena_dataset_stats_url,
+            auth=(jena_username, jena_password),
+            verify=SSL_VERIFY,
         )
         jena_dataset_stats_res.raise_for_status()
         if jena_dataset_stats_res.status_code == requests.codes.ok:
@@ -97,7 +106,9 @@ def get_graph(graph_id):
             graph_id=graph_id
         )
         jena_dataset_stats_res = requests.get(
-            jena_dataset_stats_url, auth=(jena_username, jena_password)
+            jena_dataset_stats_url,
+            auth=(jena_username, jena_password),
+            verify=SSL_VERIFY,
         )
         jena_dataset_stats_res.raise_for_status()
         if jena_dataset_stats_res.status_code == requests.codes.ok:
@@ -120,6 +131,7 @@ def graph_create(graph_id: str):
         jena_dataset_create_url,
         params={"dbName": graph_id, "dbType": "mem"},
         auth=(jena_username, jena_password),
+        verify=SSL_VERIFY,
     )
     jena_dataset_create_res.raise_for_status()
     return jena_base_url + "{graph_id}".format(graph_id=graph_id)

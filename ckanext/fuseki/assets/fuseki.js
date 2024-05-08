@@ -25,12 +25,13 @@ ckan.module('fuseki', function (jQuery) {
           dataType: p.dataType,
           success: function (response) {
             var html = jQuery(response);
+            var length = html.text().length
             // console.log('html:', html); // log the HTML to the console for debugging
-            if (html.length) {
-              if (html.length !== html_length) {
+            if (length) {
+              if (length !== html_length) {
                 self.el.html(html); // update the HTML if there are changes
                 console.log("Fuseki: status updated");
-                html_length = html.length;
+                html_length = length;
               }
             } else {
               console.log('Error: #ajax-status element not found');
@@ -38,11 +39,14 @@ ckan.module('fuseki', function (jQuery) {
           },
           error: function (xhr, status, error) {
             console.log('Error:', error);
+          },
+          complete: function () {
+            // call the update function recursively after a delay
+            setTimeout(update, 2000);
           }
         });
       };
       update(); // call the update function immediately after initialization
-      var updateInterval = setInterval(update, 5000); // set the interval to 20 seconds (20000 milliseconds)
     }
   };
 });

@@ -4,3 +4,4 @@ sqlalchemy
 pytest
 pytest-ckan
 rdflib
+requests_toolbelt

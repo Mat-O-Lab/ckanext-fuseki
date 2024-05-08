@@ -32,9 +32,14 @@ def fuseki_query_url(pkg_dict):
         # fuseki query interface
         url = "{}#/dataset/{}/query".format(FUSEKI_URL, pkg_dict["id"])
     else:
-        url = "{}?title={}&endpoint={}/{}".format(
+        url = "{}?title={}&endpoint={}{}".format(
             SPARKLIS_URL, pkg_dict["name"], FUSEKI_URL, pkg_dict["id"]
         )
+    return url
+
+
+def fuseki_sparql_url(pkg_dict):
+    url = "{}{}".format(FUSEKI_URL, pkg_dict["id"])
     return url
 
 
@@ -43,4 +48,5 @@ def get_helpers():
         "fuseki_show_tools": fuseki_show_tools,
         "fuseki_graph_exists": fuseki_graph_exists,
         "fuseki_query_url": fuseki_query_url,
+        "fuseki_sparql_url": fuseki_sparql_url,
     }
