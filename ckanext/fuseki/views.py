@@ -3,8 +3,8 @@ from flask.views import MethodView
 import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as core_helpers
 import ckan.lib.base as base
-
 from flask import request
+from ckanext.fuseki.helpers import fuseki_query_url
 
 log = __import__("logging").getLogger(__name__)
 
@@ -32,7 +32,9 @@ class FusekiView(MethodView):
                     "pkg_id": pkg_dict["id"],
                 },
             )
-        return core_helpers.redirect_to("fuseki.fuseki", id=id)
+        log.debug(toolkit.redirect_to("fuseki.fuseki", id=id))
+        return toolkit.redirect_to("fuseki.fuseki", id=id)
+        # return core_helpers.redirect_to("fuseki.fuseki", id=id)
 
     def get(self, id: str):
         pkg_dict = {}
@@ -43,7 +45,6 @@ class FusekiView(MethodView):
         status = toolkit.get_action("fuseki_update_status")(
             {}, {"pkg_id": pkg_dict["id"]}
         )
-
         return base.render(
             "fuseki/status.html",
             extra_vars={
@@ -62,13 +63,34 @@ class StatusView(MethodView):
             pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
         except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
             base.abort(404, "Resource not found")
+
         status = toolkit.get_action("fuseki_update_status")(
             {}, {"pkg_id": pkg_dict["id"]}
         )
-        return base.render(
-            "fuseki/logs.html",
-            extra_vars={"pkg_dict": pkg_dict, "status": status},
-        )
+        if "logs" in status.keys():
+            for index, item in enumerate(status["logs"]):
+                status["logs"][index]["timestamp"] = (
+                    core_helpers.time_ago_from_timestamp(item["timestamp"])
+                )
+                if item["level"] == "DEBUG":
+                    status["logs"][index]["alertlevel"] = "info"
+                    status["logs"][index]["icon"] = "bug-slash"
+                    status["logs"][index]["class"] = "success"
+                elif item["level"] == "INFO":
+                    status["logs"][index]["alertlevel"] = "info"
+                    status["logs"][index]["icon"] = "check"
+                    status["logs"][index]["class"] = "success"
+                else:
+                    status["logs"][index]["alertlevel"] = "error"
+                    status["logs"][index]["icon"] = "exclamation"
+                    status["logs"][index]["class"] = "failure"
+        if "graph" in status.keys():
+            status["queryurl"] = fuseki_query_url(pkg_dict)
+        return {"pkg_dict": pkg_dict, "status": status}
+        # return base.render(
+        #     "fuseki/logs.html",
+        #     extra_vars={"pkg_dict": pkg_dict, "status": status},
+        # )
 
 
 blueprint.add_url_rule(

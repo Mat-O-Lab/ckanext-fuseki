@@ -24,7 +24,7 @@ from dateutil.parser import isoparse as parse_iso_date
 
 from ckanext.fuseki import db, backend
 from ckanext.fuseki.tasks import update, SPARQL_RES_NAME, resource_search
-
+from ckanext.fuseki.helpers import fuseki_graph_exists
 import sqlalchemy as sa
 
 JOB_TIMEOUT = 180
@@ -72,7 +72,8 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         )
         # delete SPARQL link
         link_id = resource_search(graph_id, SPARQL_RES_NAME)
-        toolkit.get_action("resource_delete")({}, link_id)
+        if link_id:
+            toolkit.get_action("resource_delete")({}, {"id": link_id})
         if existing_task:
             toolkit.get_action("task_status_delete")(
                 context, {"id": existing_task["id"]}
@@ -366,6 +367,7 @@ def fuseki_update_status(context: Context, data_dict: dict[str, Any]) -> dict[st
             # this happens occasionally, such as when the job times out
             error = task["error"]
         status = {
+            "graph": fuseki_graph_exists(pkg_id),
             "status": task["state"],
             "job_id": job_id,
             "job_url": url,
