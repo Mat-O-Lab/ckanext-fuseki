@@ -78,7 +78,7 @@ def update(
         logger.info("Creating graph in store: {}".format(_graph))
     logger.debug("Uploading {} to graph in store at {}".format(dataset_url, _graph))
     for res_id in res_ids:
-        _res = get_action("resource_show")({"ignore_auth": True}, {"id": res_id})
+        _res = get_action("resource_show")(context, {"id": res_id})
         try:
             backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN)
         except Exception as e:
@@ -89,7 +89,7 @@ def update(
             logger.info("Upload {} to graph {} successfull".format(_res["url"], _graph))
     # create a link to the sparql endpoint
     link_id = resource_search(dataset_id, SPARQL_RES_NAME)
-    pkg_dict = get_action("package_show")({}, {"id": dataset_id})
+    pkg_dict = get_action("package_show")(context, {"id": dataset_id})
     sparql_link = upload_link(
         dataset_id,
         res_id=link_id,
