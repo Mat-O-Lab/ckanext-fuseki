@@ -88,7 +88,11 @@ def update(
         else:
             logger.info("Upload {} to graph {} successfull".format(_res["url"], _graph))
     # create a link to the sparql endpoint
-    link_id = resource_search(dataset_id, SPARQL_RES_NAME)
+    link = resource_search(dataset_id, SPARQL_RES_NAME)
+    if link:
+        link_id = link["id"]
+    else:
+        link_id = None
     pkg_dict = get_action("package_show")(context, {"id": dataset_id})
     sparql_link = upload_link(
         dataset_id,
@@ -207,19 +211,20 @@ class DatetimeJsonEncoder(json.JSONEncoder):
 
 
 def upload_link(
-    dataset_id,
-    link_url,
+    dataset_id: str,
+    link_url: str,
     res_id=None,
     group=None,
-    format="",
-    mime_type="text/html",
+    format: str = "",
+    mime_type: str = "text/html",
     # application/sparql-query
     authorization=None,
 ):
-    headers = {}
+    headers = {"Content-Type": "application/json"}
     if authorization:
         headers["Authorization"] = authorization
     if res_id:
+        logging.debug("patching SPARQL link at {} to {}".format(res_id, link_url))
         url = expand_url(CKAN_URL, "/api/action/resource_patch")
         data = {
             "id": res_id,
@@ -228,6 +233,7 @@ def upload_link(
             "format": format,
         }
     else:
+        logging.debug("creating SPARQL link to {}".format(link_url))
         url = expand_url(CKAN_URL, "/api/action/resource_create")
         data = {
             "package_id": dataset_id,

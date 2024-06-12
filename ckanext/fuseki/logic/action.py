@@ -65,15 +65,19 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
     res_exists = backend.resource_exists(graph_id)
     model = toolkit.get_or_bust(context, "model")
     dataset = model.Package.get(graph_id)
+    log.debug("trying to delete graph {} mirrowing {}".format(graph_id, dataset))
+
     if res_exists:
         result = backend.graph_delete(graph_id)
         existing_task = toolkit.get_action("task_status_show")(
             {}, {"entity_id": graph_id, "task_type": "fuseki", "key": "fuseki"}
         )
         # delete SPARQL link
-        link_id = resource_search(graph_id, SPARQL_RES_NAME)
-        if link_id:
-            toolkit.get_action("resource_delete")({}, {"id": link_id})
+        link = resource_search(dataset.id, SPARQL_RES_NAME)
+        log.debug("trying to delete link {}".format(link["id"]))
+
+        if link:
+            toolkit.get_action("resource_delete")({}, {"id": link["id"]})
         if existing_task:
             toolkit.get_action("task_status_delete")(
                 context, {"id": existing_task["id"]}
