@@ -23,7 +23,7 @@ from dateutil.parser import parse as parse_date
 from dateutil.parser import isoparse as parse_iso_date
 
 from ckanext.fuseki import db, backend
-from ckanext.fuseki.tasks import update, SPARQL_RES_NAME, resource_search
+from ckanext.fuseki.tasks import update, SPARQL_RES_NAME, resource_search, file_upload
 from ckanext.fuseki.helpers import fuseki_graph_exists
 import sqlalchemy as sa
 
@@ -165,7 +165,7 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
 
 
 def enqueue_update(
-    dataset_url: str, dataset_id: str, res_ids: list, operation: str
+    dataset_name: str, dataset_id: str, res_ids: list, operation: str
 ) -> bool:
     """Enquery a Update Task as Background Job
 
@@ -231,8 +231,8 @@ def enqueue_update(
     # add this dataset to the queue
     job = toolkit.enqueue_job(
         update,
-        [dataset_url, dataset_id, res_ids, callback_url, task["last_updated"]],
-        title='fuseki {} "{}" {}'.format(operation, dataset_id, dataset_url),
+        [dataset_name, dataset_id, res_ids, callback_url, task["last_updated"]],
+        title='fuseki {} "{}" {}'.format(operation, dataset_id, dataset_name),
         queue=queue,  # , timeout=JOB_TIMEOUT
     )
     # Store details of the job in the db

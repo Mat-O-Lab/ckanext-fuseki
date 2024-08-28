@@ -33,15 +33,17 @@ from rq import get_current_job
 
 
 def update(
-    dataset_url,
+    dataset_name,
     dataset_id,
     res_ids,
     callback_url,
     last_updated,
-    skip_if_no_changes=True,
+    unionDefaultGraph: bool = False,
+    skip_if_no_changes: bool = True,
 ):
     # url = '{ckan}/dataset/{pkg}/resource/{res_id}/download/{filename}'.format(
     #         ckan=CKAN_URL, pkg=dataset_id, res_id=res_id, filename=res_url)
+    dataset_url = f"{CKAN_URL}/dataset/{dataset_name}"
     context = {"session": model.meta.create_local_session(), "ignore_auth": True}
     metadata = {
         "ckan_url": CKAN_URL,
@@ -74,9 +76,29 @@ def update(
     if _graph:
         logger.info("Found existing graph in store: {}".format(_graph))
     else:
-        _graph = backend.graph_create(dataset_id)
+        _graph = backend.graph_create(dataset_url, dataset_id)
         logger.info("Creating graph in store: {}".format(_graph))
-    logger.debug("Uploading {} to graph in store at {}".format(dataset_url, _graph))
+    # logger.debug("Creating fuseki assembly file.")
+    # assembly_graph = backend.create_assembly(
+    #    dataset_url, dataset_id, unionDefaultGraph=True
+    # )
+    # assembly_str = assembly_graph.serialize(format="turtle")
+    # assembly_filename = "assembly.ttl"
+    # assembly_res = resource_search(dataset_id, assembly_filename)
+    # if assembly_res:
+    #     logger.debug("Found existing assembly resource {}".format(assembly_res))
+    #     existing_id = assembly_res["id"]
+    # else:
+    #     existing_id = None
+    # r = file_upload(
+    #     dataset_id,
+    #     assembly_filename,
+    #     assembly_str.encode(),
+    #     res_id=existing_id,
+    #     mime_type="text/turtle",
+    #     authorization=FUSEKI_CKAN_TOKEN,
+    # )
+    logger.debug("Uploading {} to graph in store at {}".format(dataset_id, _graph))
     for res_id in res_ids:
         _res = get_action("resource_show")(context, {"id": res_id})
         try:
@@ -296,10 +318,6 @@ def file_upload(
     response.raise_for_status()
     r = response.json()
     return r
-
-
-def create_assembly(dataset_id, res_ids):
-    pass
 
 
 def expand_url(base, url):
