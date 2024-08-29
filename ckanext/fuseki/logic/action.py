@@ -144,6 +144,8 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
     toolkit.check_access("fuseki_update", context, data_dict)
 
     id = toolkit.get_or_bust(data_dict, "pkg_id")
+    reasoning = toolkit.get_or_bust(data_dict, "reasoning")
+    persistant = toolkit.get_or_bust(data_dict, "persistent")
     try:
         pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
     except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
@@ -159,13 +161,20 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         pkg_dict["id"],
         res_ids,
         operation="changed",
+        persistant=persistant,
+        reasoning=reasoning,
     )
     log.debug("enqueue job: {}".format(res))
     return True
 
 
 def enqueue_update(
-    dataset_name: str, dataset_id: str, res_ids: list, operation: str
+    dataset_name: str,
+    dataset_id: str,
+    res_ids: list,
+    operation: str,
+    persistant: bool = False,
+    reasoning: bool = False,
 ) -> bool:
     """Enquery a Update Task as Background Job
 
@@ -174,6 +183,8 @@ def enqueue_update(
         dataset_id (str): Dateset Id the ressource is associated with
         res_ids (list): Ids of the ressources to use
         operation (str): a string discribing what has trigged the tasks, like update, create
+        persistant (bool): if the fuseki dataset should be in memory or persistantly stored
+        reasoning (bool): if reasoning or the dataset schould be enabled
 
     Raises:
         Exception: Object not found
@@ -231,7 +242,15 @@ def enqueue_update(
     # add this dataset to the queue
     job = toolkit.enqueue_job(
         update,
-        [dataset_name, dataset_id, res_ids, callback_url, task["last_updated"]],
+        [
+            dataset_name,
+            dataset_id,
+            res_ids,
+            callback_url,
+            task["last_updated"],
+            persistant,
+            reasoning,
+        ],
         title='fuseki {} "{}" {}'.format(operation, dataset_id, dataset_name),
         queue=queue,  # , timeout=JOB_TIMEOUT
     )

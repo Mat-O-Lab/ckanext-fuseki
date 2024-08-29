@@ -20,10 +20,23 @@ class FusekiView(MethodView):
             base.abort(404, "Resource not found")
         if "create/update" in request.form:
             to_upload = request.form.getlist("resid")
+            persistent = bool(request.form.get("persistent"))
+            reasoning = bool(request.form.get("reasoning"))
+            log.debug(
+                "reasoning enabled: {}; persistent dataset: {}".format(
+                    reasoning, persistent
+                )
+            )
             log.debug("ressource ids to upload: {}".format(to_upload))
             if to_upload:
                 toolkit.get_action("fuseki_update")(
-                    {}, {"pkg_id": pkg_dict["id"], "resource_ids": to_upload}
+                    {},
+                    {
+                        "pkg_id": pkg_dict["id"],
+                        "resource_ids": request.form.getlist("resid"),
+                        "persistent": persistent,
+                        "reasoning": reasoning,
+                    },
                 )
         elif "delete" in request.form:
             toolkit.get_action("fuseki_delete")(

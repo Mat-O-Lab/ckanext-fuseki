@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os, logging
+from enum import Enum
 from ckan.common import config
 import requests
 from rdflib import Graph, Namespace, URIRef, Literal, BNode
@@ -14,6 +15,31 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 TDB = Namespace("http://jena.hpl.hp.com/2008/tdb#")
 JA = Namespace("http://jena.hpl.hp.com/2005/11/Assembler#")
 FUS = Namespace("http://jena.apache.org/fuseki#")
+
+
+class Reasoners(str, Enum):
+    generic = "http://jena.hpl.hp.com/2003/GenericRuleReasoner"
+    transitiv = "http://jena.hpl.hp.com/2003/TransitiveReasoner"
+    rdfs = "http://jena.hpl.hp.com/2003/RDFSExptRuleReasoner"
+    fullOWL = "http://jena.hpl.hp.com/2003/OWLFBRuleReasoner"
+    miniOwl = "http://jena.hpl.hp.com/2003/OWLMiniFBRuleReasoner"
+    microOWL = "http://jena.hpl.hp.com/2003/OWLMicroFBRuleReasoner"
+
+    @classmethod
+    def choices(cls):
+        return [(choice, choice.name) for choice in cls]
+
+    @classmethod
+    def coerce(cls, item):
+        return cls(int(item)) if not isinstance(item, cls) else item
+
+    @classmethod
+    def get_value(cls, item):
+        return cls[item].value if item in cls.__members__ else None
+
+    def __str__(self):
+        return str(self.value)
+
 
 log = logging.getLogger(__name__)
 CHUNK_SIZE = 16 * 1024  # 16kb
@@ -124,16 +150,21 @@ def get_graph(graph_id):
     return result
 
 
-def graph_create(dataset_url: str, graph_id: str):
-    fields = [dict(type="text", id="rdf")]
-    # model = _get_or_bust(context, 'model')
-    # resource = model.Resource.get(data_dict['resource_id'])
+def graph_create(
+    dataset_url: str,
+    graph_id: str,
+    persistant: bool = False,
+    reasoning: bool = False,
+    reasoner: str = "fullOWL",
+):
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
 
     jena_dataset_create_url = jena_base_url + "$/datasets"
-    assembly_graph = create_assembly(dataset_url, graph_id)
+    assembly_graph = create_assembly(
+        dataset_url, graph_id, persistant, reasoning, reasoner
+    )
     file_data = assembly_graph.serialize(format="turtle")
     files = {"file": ("assembly.ttl", file_data, "text/turtle", {"Expires": "0"})}
 
@@ -147,7 +178,14 @@ def graph_create(dataset_url: str, graph_id: str):
     return jena_base_url + "{graph_id}".format(graph_id=graph_id)
 
 
-def create_assembly(dataset_url, dataset_id, unionDefaultGraph: bool = False):
+def create_assembly(
+    dataset_url,
+    dataset_id,
+    persistant: bool = False,
+    reasoning: bool = False,
+    reasoner: str = "fullOWL",
+    unionDefaultGraph: bool = False,
+):
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_dataset_namespace = jena_base_url + "$/dataset/"
     BASE = Namespace(jena_dataset_namespace)
@@ -159,7 +197,10 @@ def create_assembly(dataset_url, dataset_id, unionDefaultGraph: bool = False):
     dataset = URIRef(dataset_id, BASE)
     # create dataset
     g.add((dataset, RDF.type, TDB.DatasetTDB))
-    g.add((dataset, TDB.location, Literal(dataset_id)))
+    if persistant:
+        g.add((dataset, TDB.location, Literal(dataset_id)))
+    else:
+        g.add((dataset, TDB.location, Literal("--mem--")))
     if unionDefaultGraph:
         g.add((dataset, TDB.unionDefaultGraph, Literal(True)))
     # create graph
@@ -177,7 +218,24 @@ def create_assembly(dataset_url, dataset_id, unionDefaultGraph: bool = False):
     g.add((service, FUS.serviceUpload, Literal("upload")))
     g.add((service, FUS.serviceReadGraphStore, Literal("get")))
     g.add((service, FUS.serviceReadWriteGraphStore, Literal("data")))
-    g.add((service, FUS.dataset, dataset))
+    reasoner_url = Reasoners.get_value(reasoner)
+    if reasoning and reasoner_url:
+        inf_model = URIRef("inf_model", BASE)
+        g.add((inf_model, RDF.type, JA.InfModel))
+        g.add((inf_model, JA.baseModel, tdbgraph))
+        g.add(
+            (
+                inf_model,
+                JA.reasoner,
+                URIRef(reasoner_url),
+            )
+        )
+        inf_data = URIRef("inf_dataset", BASE)
+        g.add((inf_data, RDF.type, JA.RDFDataset))
+        g.add((inf_data, JA.defaultGraph, inf_model))
+        g.add((service, FUS.dataset, inf_data))
+    else:
+        g.add((service, FUS.dataset, dataset))
     # shacl
     shacl = BNode()
     g.add((shacl, FUS.operation, FUS.shacl))
