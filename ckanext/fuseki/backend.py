@@ -27,7 +27,7 @@ class Reasoners(str, Enum):
 
     @classmethod
     def choices(cls):
-        return [(choice, choice.name) for choice in cls]
+        return [{"name": choice.name, "value": str(choice)} for choice in cls]
 
     @classmethod
     def coerce(cls, item):

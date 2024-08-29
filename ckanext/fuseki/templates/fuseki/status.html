@@ -6,28 +6,71 @@
 <div id="ajax-status" data-module="fuseki">
     <form class="add-to-group" method="post">
         {{ h.csrf_input() }}
-        <button class="btn btn-secondary" name="create/update" type="submit">
-            <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
-        </button>
-        <button class="btn btn-danger invisible" name="delete" type="submit">
-            <i class="fa fa-trash"></i> {{ _('Delete') }}
-        </button>
-        <a class="btn btn-primary mb-0 invisible" name="query" href="{{ h.fuseki_query_url(pkg_dict)|safe }}"
-            role="button">
-            <i class="fa fa-play"></i> {{ _('Query') }}
-        </a>
-        <hr class="mt-0">
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" name='persistent' id="ckeck-persistent" {% if
-                status.metadata is defined %} {% if status.metadata.persistent%}checked='true' {% endif %} {% endif %}>
-            <label class="form-check-label" for="ckeck-persistent">persistent</label>
+        <div class="row m-0 gx-3 gy-2align-items-center">
+            <button class="col-auto me-2 btn btn-secondary" name="create/update" type="submit">
+                <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
+            </button>
+            <button class="col-auto me-2 btn btn-danger invisible" name="delete" type="submit">
+                <i class="fa fa-trash"></i> {{ _('Delete') }}
+            </button>
+            <a class="col-auto mr-2 btn btn-primary mb-0 invisible" name="query"
+                href="{{ h.fuseki_query_url(pkg_dict)|safe }}" role="button">
+                <i class="fa fa-play"></i> {{ _('Query') }}
+            </a>
         </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" name='reasoning' id="ckeck-reasoning" {% if status.metadata
-                is defined %} {% if status.metadata.reasoning%}checked='true' {% endif %} {% endif %}>
-            <label class="form-check-label" for="ckeck-reasoning">reasoning</label>
+        <hr class="">
+        <div class="row m-0 gx-3 gy-2 align-items-center">
+            <div class="col-auto">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name='persistent' id="check-persistent" {% if
+                        status.metadata is defined %} {% if status.metadata.persistent%}checked='true' {% endif %} {%
+                        endif %}>
+                    <label class="form-check-label" for="check-persistent">persistent</label>
+                </div>
+
+            </div>
+            <div class="col-auto">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name='reasoning' id="check-reasoning" {% if
+                        status.metadata is defined %} {% if status.metadata.reasoning%}checked='true' {% endif %} {%
+                        endif %}>
+                    <label class="form-check-label" for="check-reasoning">reasoning</label>
+                </div>
+            </div>
+            <div class="col-auto">
+                <label class="visually-hidden" for="reasoner">Reasoner</label>
+                <select class="form-select" id="reasoner" name='reasoner'>
+                    {% for item in reasoners %}
+                    <option value="{{ item.value }}" {% if item.name=="fullOWL" %}selected{% endif %}>{{ item.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name='persistent' id="ckeck-persistent" {% if
+                    status.metadata is defined %} {% if status.metadata.persistent%}checked='true' {% endif %} {% endif
+                    %}>
+                <label class="form-check-label" for="ckeck-persistent">persistent</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name='reasoning' id="ckeck-reasoning" {% if
+                    status.metadata is defined %} {% if status.metadata.reasoning%}checked='true' {% endif %} {% endif
+                    %}>
+                <label class="form-check-label" for="ckeck-reasoning">reasoning</label>
+            </div>
+            <div class="input-group-prepend">
+                <label class="input-group-text" for="reasoner">Reasoner</label>
+            </div>
+            <select class="form-select" id="reasoner" name='reasoner'>
+                {% for item in reasoners %}
+                <option value="{{ item.value }}" {% if item.name=="fullOWL" %}selected{% endif %}>{{ item.name }}
+                </option>
+                {% endfor %}
+            </select>
+ -->
         </div>
-        <hr class="mt-0">
+        <hr class="">
 
         <table class="table table-bordered table-sm m-0">
             <thead class="">
@@ -59,7 +102,7 @@
             </tbody>
         </table>
     </form>
-    <hr class="mt-0">
+    <hr class="mtb-0">
     <div class="invisible" name=status>
         <table class="table table-bordered">
             <colgroup>

@@ -40,6 +40,7 @@ def update(
     last_updated,
     persistant: bool = False,
     reasoning: bool = False,
+    reasoner: str = "",
     unionDefaultGraph: bool = False,
     skip_if_no_changes: bool = True,
 ):
@@ -78,7 +79,9 @@ def update(
     if _graph:
         logger.info("Found existing graph in store: {}".format(_graph))
     else:
-        _graph = backend.graph_create(dataset_url, dataset_id, persistant, reasoning)
+        _graph = backend.graph_create(
+            dataset_url, dataset_id, persistant, reasoning, reasoner
+        )
         logger.info("Creating graph in store: {}".format(_graph))
     # logger.debug("Creating fuseki assembly file.")
     # assembly_graph = backend.create_assembly(

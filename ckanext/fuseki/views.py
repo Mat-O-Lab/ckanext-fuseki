@@ -5,6 +5,7 @@ import ckan.lib.helpers as core_helpers
 import ckan.lib.base as base
 from flask import request
 from ckanext.fuseki.helpers import fuseki_query_url
+from ckanext.fuseki.backend import Reasoners
 
 log = __import__("logging").getLogger(__name__)
 
@@ -22,9 +23,11 @@ class FusekiView(MethodView):
             to_upload = request.form.getlist("resid")
             persistent = bool(request.form.get("persistent"))
             reasoning = bool(request.form.get("reasoning"))
+            reasoner = request.form.get("reasoner")
+
             log.debug(
-                "reasoning enabled: {}; persistent dataset: {}".format(
-                    reasoning, persistent
+                "reasoning enabled: {}; persistent dataset: {}; reasoner: {}".format(
+                    reasoning, persistent, reasoner
                 )
             )
             log.debug("ressource ids to upload: {}".format(to_upload))
@@ -36,6 +39,7 @@ class FusekiView(MethodView):
                         "resource_ids": request.form.getlist("resid"),
                         "persistent": persistent,
                         "reasoning": reasoning,
+                        "reasoner": reasoner,
                     },
                 )
         elif "delete" in request.form:
@@ -64,6 +68,7 @@ class FusekiView(MethodView):
                 "pkg_dict": pkg_dict,
                 "resources": pkg_dict["resources"],
                 "status": status,
+                "reasoners": Reasoners.choices(),
             },
         )
 

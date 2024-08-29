@@ -146,6 +146,7 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
     id = toolkit.get_or_bust(data_dict, "pkg_id")
     reasoning = toolkit.get_or_bust(data_dict, "reasoning")
     persistant = toolkit.get_or_bust(data_dict, "persistent")
+    reasoner = toolkit.get_or_bust(data_dict, "reasoner")
     try:
         pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
     except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
@@ -163,6 +164,7 @@ def fuseki_update(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         operation="changed",
         persistant=persistant,
         reasoning=reasoning,
+        reasoner=reasoner,
     )
     log.debug("enqueue job: {}".format(res))
     return True
@@ -175,6 +177,7 @@ def enqueue_update(
     operation: str,
     persistant: bool = False,
     reasoning: bool = False,
+    reasoner: str = "",
 ) -> bool:
     """Enquery a Update Task as Background Job
 
@@ -250,6 +253,7 @@ def enqueue_update(
             task["last_updated"],
             persistant,
             reasoning,
+            reasoner,
         ],
         title='fuseki {} "{}" {}'.format(operation, dataset_id, dataset_name),
         queue=queue,  # , timeout=JOB_TIMEOUT
