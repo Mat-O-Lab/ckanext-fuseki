@@ -1,3 +1,4 @@
+packaging>=24
 ckanapi
 requests>=2.4.2
 sqlalchemy
