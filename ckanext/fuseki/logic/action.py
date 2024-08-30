@@ -259,11 +259,17 @@ def enqueue_update(
         queue=queue,  # , timeout=JOB_TIMEOUT
     )
     # Store details of the job in the db
+    metadata = {
+        "res_ids": res_ids,
+        "persistant": persistant,
+        "reasoning": reasoning,
+        "reasoner": reasoner,
+    }
     try:
         db.add_pending_job(
             job.id,
             job_type=task["task_type"],
-            metadata={"res_ids": res_ids},
+            metadata=metadata,
             result_url=callback_url,
         )
     except sa.exc.IntegrityError:
@@ -413,6 +419,8 @@ def fuseki_update_status(context: Context, data_dict: dict[str, Any]) -> dict[st
                 ):
                     log["timestamp"] = log["timestamp"].isoformat()
         status = dict(status, **db_job)
+        status["metadata"] = db_job["metadata"]
+
     return status
 
 

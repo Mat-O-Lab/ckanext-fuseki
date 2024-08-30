@@ -37,6 +37,13 @@ class Reasoners(str, Enum):
     def get_value(cls, item):
         return cls[item].value if item in cls.__members__ else None
 
+    @classmethod
+    def get_key(cls, value):
+        for key, val in cls.__members__.items():
+            if val.value == value:
+                return key
+        return None
+
     def __str__(self):
         return str(self.value)
 

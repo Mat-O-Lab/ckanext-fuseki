@@ -54,6 +54,9 @@ def update(
         "resource_ids": res_ids,
         "task_created": last_updated,
         "original_url": dataset_url,
+        "persistant": persistant,
+        "reasoning": reasoning,
+        "reasoner": reasoner,
     }
     job_info = dict()
     job_dict = dict(metadata=metadata, status="running", job_info=job_info)

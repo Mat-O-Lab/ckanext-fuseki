@@ -71,7 +71,11 @@ ckan.module('fuseki', function (jQuery) {
           complete: function () {
             // call the update function recursively after a delay
             setTimeout(update, 2000);
-          }
+          },
+
+        });
+        jQuery('#check-reasoning').change(function () {
+          jQuery('#reasoner').prop('disabled', !this.checked);
         });
       };
       update(); // call the update function immediately after initialization

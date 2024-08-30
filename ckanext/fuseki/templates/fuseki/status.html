@@ -37,11 +37,19 @@
                     <label class="form-check-label" for="check-reasoning">reasoning</label>
                 </div>
             </div>
+            {% if status.metadata is defined %}
+            {% set reasoner = status.metadata.reasoner %}
+            {% else %}
+            {% set reasoner = 'http://jena.hpl.hp.com/2003/OWLFBRuleReasoner' %}
+            {% endif %}
             <div class="col-auto">
                 <label class="visually-hidden" for="reasoner">Reasoner</label>
-                <select class="form-select" id="reasoner" name='reasoner'>
+                <select class="form-select" id="reasoner" name='reasoner' {% if not status.metadata is defined %} {% if
+                    status.metadata.reasoning%}disabled{% endif %} {% endif %}>
                     {% for item in reasoners %}
-                    <option value="{{ item.value }}" {% if item.name=="fullOWL" %}selected{% endif %}>{{ item.name }}
+                    <option value="{{ item.value }}" {% if item.value==reasoner %}selected{% endif %}>
+                        {{
+                        item.name }}
                     </option>
                     {% endfor %}
                 </select>
