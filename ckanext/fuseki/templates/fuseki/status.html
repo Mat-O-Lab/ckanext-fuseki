@@ -19,12 +19,25 @@
             </a>
         </div>
         <hr class="">
+        {% if status.metadata is defined %}
+        {% set reasoner = status.metadata.reasoner %}
+        {% set reasoning = status.metadata.reasoning %}
+        {% set persistant = status.metadata.persistant %}
+        {% set reasoner = status.metadata.reasoner %}
+        {% if not reasoning %}
+        {% set disable_res = true %}
+        {% endif %}
+        {% else %}
+        {% set reasoning = false %}
+        {% set persistant = false %}
+        {% set disable_res = true %}
+        {% set reasoner = 'http://jena.hpl.hp.com/2003/OWLFBRuleReasoner' %}
+        {% endif %}
         <div class="row m-0 gx-3 gy-2 align-items-center">
             <div class="col-auto">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name='persistent' id="check-persistent" {% if
-                        status.metadata is defined %} {% if status.metadata.persistent%}checked='true' {% endif %} {%
-                        endif %}>
+                        persistant%}checked{% endif %}>
                     <label class="form-check-label" for="check-persistent">persistent</label>
                 </div>
 
@@ -32,20 +45,13 @@
             <div class="col-auto">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name='reasoning' id="check-reasoning" {% if
-                        status.metadata is defined %} {% if status.metadata.reasoning%}checked='true' {% endif %} {%
-                        endif %}>
+                        reasoning%}checked{% endif %}>
                     <label class="form-check-label" for="check-reasoning">reasoning</label>
                 </div>
             </div>
-            {% if status.metadata is defined %}
-            {% set reasoner = status.metadata.reasoner %}
-            {% else %}
-            {% set reasoner = 'http://jena.hpl.hp.com/2003/OWLFBRuleReasoner' %}
-            {% endif %}
             <div class="col-auto">
                 <label class="visually-hidden" for="reasoner">Reasoner</label>
-                <select class="form-select" id="reasoner" name='reasoner' {% if not status.metadata is defined %} {% if
-                    status.metadata.reasoning%}disabled{% endif %} {% endif %}>
+                <select class="form-select" id="reasoner" name='reasoner' {% if disable_res%}disabled{% endif %}>
                     {% for item in reasoners %}
                     <option value="{{ item.value }}" {% if item.value==reasoner %}selected{% endif %}>
                         {{
