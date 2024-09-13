@@ -14,14 +14,9 @@ services:
       - JVM_ARGS=-Xmx10g -DentityExpansionLimit=0
     volumes:
       - jena_data:/fuseki
-      - ./fuseki/shiro.ini:/fuseki/shiro.ini
       - ./fuseki/config.ttl:/fuseki/config.ttl
       - ./fuseki/jetty.xml:/fuseki/jetty.xml
-    command:
-      [
-        "/jena-fuseki/fuseki-server",
-        "--jetty-config=/fuseki/jetty.xml"
-      ]
+    command: [ "/jena-fuseki/fuseki-server", "--jetty-config=/fuseki/jetty.xml" ]
     stop_grace_period: 10s
     healthcheck:
       test:
