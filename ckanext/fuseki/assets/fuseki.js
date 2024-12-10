@@ -29,7 +29,7 @@ ckan.module('fuseki', function (jQuery) {
             // console.log(log_length, length);
             const haslogs = 'logs' in data.status;
             const hasgraph = 'graph' in data.status;
-             if (hasresults || haslogs) {
+             if (hasgraph || haslogs) {
               console.log(self.el.find('button[name="delete"]'));
               self.el.find('button[name="delete"]').removeClass("invisible");
               self.el.find('a[name="query"]').removeClass("invisible");
