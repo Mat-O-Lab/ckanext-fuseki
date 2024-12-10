@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 from ckanext.fuseki.backend import get_graph
-import re, os
+import re, os, requests
 
 
 # Retrieve the value of a configuration option
@@ -11,6 +11,22 @@ SPARKLIS_URL = os.environ.get("CKANINI__CKANEXT__FUSEKI__SPARKLIS__URL", "")
 
 def common_member(a, b):
     return any(i in b for i in a)
+
+
+def fuseki_service_available():
+    url = os.environ.get("CKANINI__CKANEXT__FUSEKI__URL", "")
+    if not url:
+        return False  # If EXTRACT_URL is not set, return False
+    try:
+        # Perform a HEAD request (lightweight check) to see if the service responds
+        response = requests.head(url, timeout=5, verify=False)
+        if (200 <= response.status_code < 400) or response.status_code == 405:
+            return True  # URL is reachable and returns a valid status code
+        else:
+            return False  # URL is reachable but response status is not valid
+    except requests.RequestException as e:
+        # If there's any issue (timeout, connection error, etc.)
+        return False
 
 
 def fuseki_show_tools(resource):

@@ -6,17 +6,36 @@
 <div id="ajax-status" data-module="fuseki">
     <form class="add-to-group" method="post">
         {{ h.csrf_input() }}
-        <div class="row m-0 gx-3 gy-2align-items-center">
-            <button class="col-auto me-2 btn btn-secondary" name="create/update" type="submit">
-                <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
-            </button>
-            <button class="col-auto me-2 btn btn-danger invisible" name="delete" type="submit">
-                <i class="fa fa-trash"></i> {{ _('Delete') }}
-            </button>
-            <a class="col-auto mr-2 btn btn-primary mb-0 invisible" name="query"
-                href="{{ h.fuseki_query_url(pkg_dict)|safe }}" role="button">
-                <i class="fa fa-play"></i> {{ _('Query') }}
-            </a>
+        <div class="col-12 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <button class="col-auto me-2 btn btn-secondary {% if not
+                    service_status %}disabled{% endif %}" name="create/update" type="submit">
+                    <i class="fa fa-refresh"></i> {{ _('Create/Update') }}
+                </button>
+                <button class="col-auto me-2 btn btn-danger invisible" name="delete" type="submit">
+                    <i class="fa fa-trash"></i> {{ _('Delete') }}
+                </button>
+                <a class="col-auto mr-2 btn btn-primary mb-0 invisible" name="query"
+                    href="{{ h.fuseki_query_url(pkg_dict)|safe }}" role="button">
+                    <i class="fa fa-play"></i> {{ _('Query') }}
+                </a>
+            </div>
+            <!-- Status Indicator Section -->
+            <style>
+                .indicator {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    background-color: red;
+                    /* Default: Service unavailable */
+                }
+            </style>
+            <div class="d-flex align-items-center">
+                <div id="service-indicator" class="indicator" data-bs-toggle="tooltip"
+                    title="{{ _('The status of the service (Green means available, Red means unavailable)') }}" {% if
+                    service_status %} style="background-color: green;" {% endif %}>
+                </div>
+            </div>
         </div>
         <hr class="">
         {% if status.metadata is defined %}

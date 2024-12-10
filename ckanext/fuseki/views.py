@@ -4,7 +4,7 @@ import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as core_helpers
 import ckan.lib.base as base
 from flask import request
-from ckanext.fuseki.helpers import fuseki_query_url
+from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 from ckanext.fuseki.backend import Reasoners
 
 log = __import__("logging").getLogger(__name__)
@@ -68,6 +68,7 @@ class FusekiView(MethodView):
                 "pkg_dict": pkg_dict,
                 "resources": pkg_dict["resources"],
                 "status": status,
+                "service_status": fuseki_service_available(),
                 "reasoners": Reasoners.choices(),
             },
         )
