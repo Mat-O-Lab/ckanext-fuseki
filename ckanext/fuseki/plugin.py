@@ -5,6 +5,7 @@ import logging, os
 
 import ckan.plugins as p
 from ckan.common import CKANConfig
+from ckan.config.declaration import Declaration, Key
 import ckan.model as model
 from typing import Any
 
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 
 class JenaPlugin(p.SingletonPlugin):
     p.implements(p.IConfigurer)
+    p.implements(p.IConfigDeclaration)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
     p.implements(p.IResourceController, inherit=True)
@@ -26,20 +28,19 @@ class JenaPlugin(p.SingletonPlugin):
     # IConfigurer
 
     def update_config(self, config: CKANConfig):
-        required_keys = "ckanext.fuseki.url ckanext.fuseki.username ckanext.fuseki.password ckanext.fuseki.formats"
-        for key in required_keys.split():
-            if config.get(key) is None:
-                # check if in envars
-                env_str = "CKANINI__" + key.replace(".", "__").upper()
-                if not os.environ.get(env_str, None):
-                    raise RuntimeError(
-                        "Required configuration option {0} not found in ckan.ini or ENVARS.".format(
-                            key
-                        )
-                    )
-        self.config = config
         p.toolkit.add_template_directory(config, "templates")
         p.toolkit.add_resource("assets", "fuseki")
+
+    # IConfigDeclaration
+
+    def declare_config_options(self, declaration: Declaration, key: Key):
+        declaration.declare(key.ckanext.fuseki.url, "/fuseki")
+        declaration.declare(key.ckanext.fuseki.username, "admin")
+        declaration.declare(key.ckanext.fuseki.password, "admin")
+        declaration.declare(
+            key.ckan.fuseki.formats,
+            "turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld",
+        )
 
     # IActions
 
