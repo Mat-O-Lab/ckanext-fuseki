@@ -6,6 +6,7 @@ import ckan.lib.base as base
 from flask import request
 from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 from ckanext.fuseki.backend import Reasoners
+from ckan.common import _
 
 log = __import__("logging").getLogger(__name__)
 
@@ -17,38 +18,41 @@ class FusekiView(MethodView):
     def post(self, id: str):
         try:
             pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
-        except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
-            base.abort(404, "Resource not found")
-        if "create/update" in request.form:
-            to_upload = request.form.getlist("resid")
-            persistent = bool(request.form.get("persistent"))
-            reasoning = bool(request.form.get("reasoning"))
-            reasoner = request.form.get("reasoner")
+            if "create/update" in request.form:
+                to_upload = request.form.getlist("resid")
+                persistent = bool(request.form.get("persistent"))
+                reasoning = bool(request.form.get("reasoning"))
+                reasoner = request.form.get("reasoner")
 
-            log.debug(
-                "reasoning enabled: {}; persistent dataset: {}; reasoner: {}".format(
-                    reasoning, persistent, reasoner
+                log.debug(
+                    "reasoning enabled: {}; persistent dataset: {}; reasoner: {}".format(
+                        reasoning, persistent, reasoner
+                    )
                 )
-            )
-            log.debug("ressource ids to upload: {}".format(to_upload))
-            if to_upload:
-                toolkit.get_action("fuseki_update")(
+                log.debug("ressource ids to upload: {}".format(to_upload))
+                if to_upload:
+                    toolkit.get_action("fuseki_update")(
+                        {},
+                        {
+                            "pkg_id": pkg_dict["id"],
+                            "resource_ids": request.form.getlist("resid"),
+                            "persistent": persistent,
+                            "reasoning": reasoning,
+                            "reasoner": reasoner,
+                        },
+                    )
+            elif "delete" in request.form:
+                toolkit.get_action("fuseki_delete")(
                     {},
                     {
                         "pkg_id": pkg_dict["id"],
-                        "resource_ids": request.form.getlist("resid"),
-                        "persistent": persistent,
-                        "reasoning": reasoning,
-                        "reasoner": reasoner,
                     },
                 )
-        elif "delete" in request.form:
-            toolkit.get_action("fuseki_delete")(
-                {},
-                {
-                    "pkg_id": pkg_dict["id"],
-                },
-            )
+        except toolkit.ObjectNotFound:
+            base.abort(404, "Dataset not found")
+        except toolkit.NotAuthorized:
+            base.abort(403, _("Not authorized to see this page"))
+
         log.debug(toolkit.redirect_to("fuseki.fuseki", id=id))
         return toolkit.redirect_to("fuseki.fuseki", id=id)
         # return core_helpers.redirect_to("fuseki.fuseki", id=id)
@@ -57,11 +61,14 @@ class FusekiView(MethodView):
         pkg_dict = {}
         try:
             pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
-        except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
-            base.abort(404, "Resource not found")
-        status = toolkit.get_action("fuseki_update_status")(
-            {}, {"pkg_id": pkg_dict["id"]}
-        )
+            status = toolkit.get_action("fuseki_update_status")(
+                {}, {"pkg_id": pkg_dict["id"]}
+            )
+        except toolkit.ObjectNotFound:
+            base.abort(404, "Dataset not found")
+        except toolkit.NotAuthorized:
+            base.abort(403, _("Not authorized to see this page"))
+
         return base.render(
             "fuseki/status.html",
             extra_vars={
@@ -80,12 +87,14 @@ class StatusView(MethodView):
         pkg_dict = {}
         try:
             pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
-        except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
-            base.abort(404, "Resource not found")
+            status = toolkit.get_action("fuseki_update_status")(
+                {}, {"pkg_id": pkg_dict["id"]}
+            )
+        except toolkit.ObjectNotFound:
+            base.abort(404, "Dataset not found")
+        except toolkit.NotAuthorized:
+            base.abort(403, _("Not authorized to see this page"))
 
-        status = toolkit.get_action("fuseki_update_status")(
-            {}, {"pkg_id": pkg_dict["id"]}
-        )
         if "logs" in status.keys():
             for index, item in enumerate(status["logs"]):
                 status["logs"][index]["timestamp"] = (
@@ -106,10 +115,6 @@ class StatusView(MethodView):
         if "graph" in status.keys():
             status["queryurl"] = fuseki_query_url(pkg_dict)
         return {"pkg_dict": pkg_dict, "status": status}
-        # return base.render(
-        #     "fuseki/logs.html",
-        #     extra_vars={"pkg_dict": pkg_dict, "status": status},
-        # )
 
 
 blueprint.add_url_rule(
