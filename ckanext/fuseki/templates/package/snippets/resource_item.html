@@ -1,0 +1,13 @@
+{% ckan_extends %}
+
+{% block resource_item_explore_links %}
+{{ super() }}
+{% if res.url and h.is_url(res.url) and res.format=='SPARQL' %}
+<li>
+  <a href="{{ h.fuseki_query_url(pkg)|safe }}" class="dropdown-item  resource-url-fuseki-query" target="_blank" rel="noreferrer">
+    <i class="fa fa-external-link"></i>
+    {{ _('Query') }}
+  </a>
+</li>
+{% endif %}
+{% endblock %}

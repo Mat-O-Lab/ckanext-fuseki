@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint, redirect
 from flask.views import MethodView
 import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as core_helpers
@@ -117,12 +117,31 @@ class StatusView(MethodView):
         return {"pkg_dict": pkg_dict, "status": status}
 
 
+def query_view(id: str):
+    pkg_dict = {}
+    try:
+        pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
+    except toolkit.ObjectNotFound:
+        base.abort(404, "Dataset not found")
+    except toolkit.NotAuthorized:
+        base.abort(403, _("Not authorized to see this page"))
+
+    return redirect(fuseki_query_url(pkg_dict), code=302)
+
+
 blueprint.add_url_rule(
     "/dataset/<id>/fuseki", view_func=FusekiView.as_view(str("fuseki"))
 )
 blueprint.add_url_rule(
     "/dataset/<id>/fuseki/status",
     view_func=StatusView.as_view(str("status")),
+)
+
+blueprint.add_url_rule(
+    "/dataset/<id>/fuseki/query",
+    view_func=query_view,
+    endpoint="query",
+    methods=["GET"],
 )
 
 
