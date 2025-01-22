@@ -1,13 +1,13 @@
 # encoding: utf-8
 
-import logging, os
+import logging
+import os
+from typing import Any
 
-
+import ckan.model as model
 import ckan.plugins as p
 from ckan.common import CKANConfig
 from ckan.config.declaration import Declaration, Key
-import ckan.model as model
-from typing import Any
 
 import ckanext.fuseki.logic.action as action
 import ckanext.fuseki.logic.auth as auth

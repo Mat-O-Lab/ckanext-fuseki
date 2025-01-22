@@ -8,9 +8,9 @@ Loosely based on ckan-service-provider's db.py
 import datetime
 import json
 import os
+
 import six
 import sqlalchemy
-
 
 ENGINE = None
 _METADATA = None

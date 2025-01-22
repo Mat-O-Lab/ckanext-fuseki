@@ -1,16 +1,17 @@
+import datetime
 import json
 import os
 from io import BytesIO
-from requests_toolbelt.multipart.encoder import MultipartEncoder
-from urllib.parse import urlparse, urljoin, urlsplit
+from urllib.parse import urljoin, urlparse, urlsplit
 
 import ckanapi
 import ckanapi.datapackage
 import requests
-from ckan.plugins.toolkit import get_action, asbool
 from ckan import model
-import datetime
-from ckanext.fuseki import db, backend, helpers
+from ckan.plugins.toolkit import asbool, get_action
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
+from ckanext.fuseki import backend, db, helpers
 
 try:
     from urllib.parse import urlsplit

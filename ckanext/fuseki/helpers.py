@@ -1,8 +1,11 @@
 # encoding: utf-8
 
-from ckanext.fuseki.backend import get_graph
-import re, os, requests
+import os
+import re
 
+import requests
+
+from ckanext.fuseki.backend import get_graph
 
 # Retrieve the value of a configuration option
 FUSEKI_URL = os.environ.get("CKANINI__CKANEXT__FUSEKI__URL", "/")

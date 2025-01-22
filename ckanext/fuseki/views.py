@@ -1,12 +1,12 @@
-from flask import Blueprint, redirect
-from flask.views import MethodView
-import ckan.plugins.toolkit as toolkit
-import ckan.lib.helpers as core_helpers
 import ckan.lib.base as base
-from flask import request
-from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
-from ckanext.fuseki.backend import Reasoners
+import ckan.lib.helpers as core_helpers
+import ckan.plugins.toolkit as toolkit
 from ckan.common import _
+from flask import Blueprint, redirect, request
+from flask.views import MethodView
+
+from ckanext.fuseki.backend import Reasoners
+from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 
 log = __import__("logging").getLogger(__name__)
 

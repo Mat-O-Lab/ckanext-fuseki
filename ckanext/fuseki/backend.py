@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 
-import os, logging
+import logging
+import os
 from enum import Enum
-from ckan.common import config
-import requests
-from rdflib import Graph, Namespace, URIRef, Literal, BNode
-from rdflib.namespace import RDFS, RDF
-from ckan.plugins.toolkit import asbool
-
 from io import BytesIO
-from requests_toolbelt.multipart.encoder import MultipartEncoder
 
+import requests
+from ckan.common import config
+from ckan.plugins.toolkit import asbool
+from rdflib import BNode, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import RDF, RDFS
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 TDB = Namespace("http://jena.hpl.hp.com/2008/tdb#")
 JA = Namespace("http://jena.hpl.hp.com/2005/11/Assembler#")

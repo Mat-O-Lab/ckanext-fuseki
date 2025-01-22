@@ -6,7 +6,12 @@ from ckan.logic.auth.get import task_status_show
 
 def jena_auth(context, data_dict, privilege="package_update"):
     if "id" not in data_dict:
-        data_dict["id"] = data_dict.get("resource_ids",[None,])[0]
+        data_dict["id"] = data_dict.get(
+            "resource_ids",
+            [
+                None,
+            ],
+        )[0]
     user = context.get("user")
     authorized = p.toolkit.check_access(privilege, context, data_dict)
     if not authorized:

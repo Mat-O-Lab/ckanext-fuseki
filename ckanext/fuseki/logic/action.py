@@ -1,10 +1,10 @@
 # encoding: utf-8
 
-import logging
 import json
+import logging
 
-from ckan import model
 import ckan.plugins.toolkit as toolkit
+from ckan import model
 
 if toolkit.check_ckan_version("2.10"):
     from ckan.types import Context
@@ -15,17 +15,18 @@ else:
             super().__init__(**kwargs)
 
 
-from ckan.lib.jobs import DEFAULT_QUEUE_NAME
-
-import datetime, os
+import datetime
+import os
 from typing import Any
-from dateutil.parser import parse as parse_date
-from dateutil.parser import isoparse as parse_iso_date
 
-from ckanext.fuseki import db, backend
-from ckanext.fuseki.tasks import update, SPARQL_RES_NAME, resource_search, file_upload
-from ckanext.fuseki.helpers import fuseki_graph_exists
 import sqlalchemy as sa
+from ckan.lib.jobs import DEFAULT_QUEUE_NAME
+from dateutil.parser import isoparse as parse_iso_date
+from dateutil.parser import parse as parse_date
+
+from ckanext.fuseki import backend, db
+from ckanext.fuseki.helpers import fuseki_graph_exists
+from ckanext.fuseki.tasks import SPARQL_RES_NAME, file_upload, resource_search, update
 
 JOB_TIMEOUT = 180
 
