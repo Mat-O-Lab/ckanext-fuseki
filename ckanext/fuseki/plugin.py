@@ -34,11 +34,13 @@ class JenaPlugin(p.SingletonPlugin):
     # IConfigDeclaration
 
     def declare_config_options(self, declaration: Declaration, key: Key):
-        declaration.declare(key.ckanext.fuseki.url, "/fuseki")
-        declaration.declare(key.ckanext.fuseki.username, "admin")
-        declaration.declare(key.ckanext.fuseki.password, "admin")
+        declaration.annotate("Fuseki")
+        group = key.ckanext.fuseki
+        declaration.declare(group.url, "/fuseki")
+        declaration.declare(group.username, "admin")
+        declaration.declare(group.password, "admin")
         declaration.declare(
-            key.ckan.fuseki.formats,
+            group.formats,
             "turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld",
         )
 
