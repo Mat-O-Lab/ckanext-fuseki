@@ -62,7 +62,7 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         _type_: Resource Id the fuseki graph is delete for if succesfull, or empty dict if not.
     """
     toolkit.check_access("fuseki_delete", context, data_dict)
-    graph_id = toolkit.get_or_bust(data_dict, "pkg_id")
+    graph_id = toolkit.get_or_bust(data_dict, "id")
     res_exists = backend.resource_exists(graph_id)
     model = toolkit.get_or_bust(context, "model")
     dataset = model.Package.get(graph_id)
@@ -73,12 +73,13 @@ def fuseki_delete(context: Context, data_dict: dict[str, Any]) -> dict[str, Any]
         existing_task = toolkit.get_action("task_status_show")(
             {}, {"entity_id": graph_id, "task_type": "fuseki", "key": "fuseki"}
         )
+        log.debug(result)
         # delete SPARQL link
         link = resource_search(dataset.id, SPARQL_RES_NAME)
         log.debug("trying to delete link {}".format(link["id"]))
 
         if link:
-            toolkit.get_action("resource_delete")({}, {"id": link["id"]})
+            toolkit.get_action("resource_delete")(context, {"id": link["id"]})
         if existing_task:
             toolkit.get_action("task_status_delete")(
                 context, {"id": existing_task["id"]}

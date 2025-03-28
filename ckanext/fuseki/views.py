@@ -45,7 +45,7 @@ class FusekiView(MethodView):
                 toolkit.get_action("fuseki_delete")(
                     {},
                     {
-                        "pkg_id": pkg_dict["id"],
+                        "id": pkg_dict["id"],
                     },
                 )
         except toolkit.ObjectNotFound:
