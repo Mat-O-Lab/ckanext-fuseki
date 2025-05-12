@@ -8,8 +8,6 @@ permissions:
   contents: write
   id-token: write
 
-env:
-  PACKAGE_NAME: ckanext-fuseki
 
 jobs:
   release-build:
@@ -47,11 +45,11 @@ jobs:
     environment:
       name: pypi
       # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
-      #url: https://pypi.org/p/$PACKAGE_NAME
+      #url: https://pypi.org/p/${GITHUB_REPOSITORY#*/}
       #
       # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
       # ALTERNATIVE: exactly, uncomment the following line instead:
-      url: https://pypi.org/project/$PACKAGE_NAME/${{ github.event.release.name }}
+      url: https://pypi.org/project/${GITHUB_REPOSITORY#*/}/${{ github.event.release.name }}
 
     steps:
       - name: Retrieve release distributions
@@ -106,7 +104,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/$PACKAGE_NAME
+      url: https://test.pypi.org/p/${GITHUB_REPOSITORY#*/}
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
