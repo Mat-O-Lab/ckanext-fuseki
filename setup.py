@@ -18,6 +18,7 @@ setup(
     version=environ.get('VERSION', '0.0.0'),
     description="""An extension for storing file with Apache Jena""",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     # The project's main homepage.
     url="https://github.com/Mat-O-Lab/ckanext-fuseki",
     # Author details
