@@ -15,7 +15,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version="0.0.1",
+    version=os.environ.get('VERSION', '0.0.0'),
     description="""An extension for storing file with Apache Jena""",
     long_description=long_description,
     # The project's main homepage.

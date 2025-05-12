@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set version from release tag
+        run: echo "VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
