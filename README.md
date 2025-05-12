@@ -32,22 +32,15 @@ Compatibility with core CKAN versions:
 
 ## Installation
 
-**TODO:** Add any additional installation steps to the list below.
-   For example, installing any non-Python dependencies or adding any required
-   config settings.
-
-To install ckanext-fuseki:
+To install the extension:
 
 1. Activate your CKAN virtual environment, for example:
 ```bash
-     . /usr/lib/ckan/default/bin/activate
+. /usr/lib/ckan/default/bin/activate
 ```
-2. Clone the source and install it on the virtualenv
+2. Use pip to install package
 ```bash
-    git clone https://github.com/Mat-O-Lab/ckanext-fuseki.git
-    cd ckanext-fuseki
-    pip install -e .
-   pip install -r requirements.txt
+pip install ckanext-fuseki
 ```
 3. Add `fuseki` to the `ckan.plugins` setting in your CKAN
    config file (by default the config file is located at
@@ -55,7 +48,7 @@ To install ckanext-fuseki:
 
 4. Restart CKAN. For example, if you've deployed CKAN with Apache on Ubuntu:
 ```bash
-     sudo service apache2 reload
+sudo service apache2 reload
 ```
 
 ## Config settings
