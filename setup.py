@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from codecs import open  # To use a consistent encoding
-from os import path
+from os import path, environ
 
 from setuptools import find_packages, setup  # Always prefer setuptools over distutils
 
@@ -15,7 +15,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version=os.environ.get('VERSION', '0.0.0'),
+    version=environ.get('VERSION', '0.0.0'),
     description="""An extension for storing file with Apache Jena""",
     long_description=long_description,
     # The project's main homepage.
