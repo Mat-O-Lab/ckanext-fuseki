@@ -1,0 +1,90 @@
+# German translations for ckanext-fuseki.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the ckanext-fuseki
+# project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ckanext-fuseki 0.0.0\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-05-14 07:45+0000\n"
+"PO-Revision-Date: 2025-05-14 07:45+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: de\n"
+"Language-Team: de <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.15.0\n"
+
+#: ckanext/fuseki/views.py:54 ckanext/fuseki/views.py:70
+#: ckanext/fuseki/views.py:96 ckanext/fuseki/views.py:127
+msgid "Not authorized to see this page"
+msgstr "Sie sind nicht berechtigt dies Seite aufzurufen"
+
+#: ckanext/fuseki/logic/auth.py:22
+msgid "User {0} not authorized to update package {1}"
+msgstr "User {0} ist nicht berechtigt diese Änderung durchzuführen"
+
+#: ckanext/fuseki/templates/fuseki/status.html:5
+#: ckanext/fuseki/templates/package/read_base.html:6
+msgid "Fuseki"
+msgstr "Fuseki"
+
+#: ckanext/fuseki/templates/fuseki/status.html:13
+msgid "Create/Update"
+msgstr "Arzeugen/Updaten"
+
+#: ckanext/fuseki/templates/fuseki/status.html:16
+msgid "Delete"
+msgstr "Löschen"
+
+#: ckanext/fuseki/templates/fuseki/status.html:20
+#: ckanext/fuseki/templates/package/resource_read.html:6
+#: ckanext/fuseki/templates/package/snippets/resource_item.html:9
+msgid "Query"
+msgstr "Abfragen"
+
+#: ckanext/fuseki/templates/fuseki/status.html:35
+msgid "The status of the service (Green means available, Red means unavailable)"
+msgstr "Status des Service (Grün heißt verfügbar, rot nicht verfügbar)"
+
+
+#: ckanext/fuseki/templates/fuseki/status.html:111
+msgid "upload"
+msgstr "hochladen"
+
+#: ckanext/fuseki/templates/fuseki/status.html:112
+msgid "name"
+msgstr "Name"
+
+#: ckanext/fuseki/templates/fuseki/status.html:113
+msgid "format"
+msgstr "Format"
+
+#: ckanext/fuseki/templates/fuseki/status.html:114
+msgid "mime type"
+msgstr "MIME-Typ"
+
+#: ckanext/fuseki/templates/fuseki/status.html:115
+msgid "size"
+msgstr "Größe"
+
+#: ckanext/fuseki/templates/fuseki/status.html:146
+msgid "Status"
+msgstr "Status"
+
+#: ckanext/fuseki/templates/fuseki/status.html:150
+msgid "Last updated"
+msgstr "Letztes Update"
+
+#: ckanext/fuseki/templates/fuseki/status.html:155
+msgid "Never"
+msgstr "Niemals"
+
+#: ckanext/fuseki/templates/fuseki/status.html:160
+msgid "Graph Update Log"
+msgstr "Graphbearbeitungsbericht"
+
