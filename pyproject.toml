@@ -53,23 +53,23 @@ namespaces = true
 [tool.babel.extract_messages]
 keywords = "translate isPlural"
 add_comments = "TRANSLATORS:"
-output_file = "i18n/ckanext-fuseki.pot"
+output_file = "ckanext/fuseki/i18n/ckanext-fuseki.pot"
 width = 80
 
 [tool.babel.init_catalog]
 domain = "ckanext-fuseki"
-input_file = "i18n/ckanext-fuseki.pot"
-output_dir = "i18n"
+input_file = "ckanext/fuseki/i18n/ckanext-fuseki.pot"
+output_dir = "ckanext/fuseki/i18n"
 
 [tool.babel.update_catalog]
 domain = "ckanext-fuseki"
-input_file = "i18n/ckanext-fuseki.pot"
-output_dir = "i18n"
+input_file = "ckanext/fuseki/i18n/ckanext-fuseki.pot"
+output_dir = "ckanext/fuseki/i18n"
 previous = true
 
 [tool.babel.compile_catalog]
 domain = "ckanext-fuseki"
-directory = "i18n"
+directory = "ckanext/fuseki/i18n"
 statistics = true
 
 # Setuptools-scm configuration for dynamic versioning from git tags
