@@ -1,4 +1,10 @@
-include README.rst
+include README.md
 include LICENSE
 include requirements.txt
-recursive-include ckanext/multidatastore *.html *.json *.js *.less *.css *.mo
+include dev-requirements.txt
+include test.ini
+
+recursive-include ckanext/fuseki/templates *.html
+recursive-include ckanext/fuseki/assets *
+recursive-include ckanext/fuseki/public *
+recursive-include ckanext/fuseki/i18n *.mo *.pot *.po
