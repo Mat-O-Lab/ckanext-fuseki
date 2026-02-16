@@ -2,6 +2,10 @@
 node_modules
 bower_components
 
+# Test environment
+test_venv/
+test_union_*.ttl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
