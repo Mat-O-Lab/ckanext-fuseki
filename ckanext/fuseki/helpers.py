@@ -51,7 +51,8 @@ def fuseki_query_url(pkg_dict):
         # fuseki query interface
         url = "{}#/dataset/{}/query".format(FUSEKI_URL, pkg_dict["id"])
     else:
-        url = "{}?title={}&endpoint={}{}".format(
+        # Sparklis interface with rdfs:label configuration for better entity/concept display
+        url = "{}?title={}&endpoint={}{}&entity_lexicon_select=http%3A//www.w3.org/2000/01/rdf-schema%23label&concept_lexicons_select=http%3A//www.w3.org/2000/01/rdf-schema%23label".format(
             SPARKLIS_URL, pkg_dict["name"], FUSEKI_URL, pkg_dict["id"]
         )
     return url

@@ -57,6 +57,15 @@ if not SSL_VERIFY:
 
 
 def graph_delete(graph_id: str):
+    """
+    Delete a dataset from Fuseki.
+    
+    This function only deletes the dataset - it does NOT update the union service.
+    The caller is responsible for managing the union service lifecycle.
+    
+    Args:
+        graph_id: The dataset ID to delete
+    """
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
@@ -71,32 +80,42 @@ def graph_delete(graph_id: str):
             verify=SSL_VERIFY,
         )
         jena_dataset_delete_res.raise_for_status()
-        
-        # After deleting a dataset, update the union service
-        try:
-            update_union_service()
-        except Exception as e:
-            log.warning(f"Failed to update union service: {e}")
+        log.info(f"Deleted dataset {graph_id}")
             
     except Exception as e:
+        log.debug(f"Could not delete dataset {graph_id}: {e}")
         pass
 
     return result
 
 
-def resource_upload(resource, graph_url, api_key=""):
+def resource_upload(resource, graph_url, api_key="", reasoning=False):
     """
     Upload a resource to Fuseki, storing it in a named graph.
     
-    The named graph URI is set to the resource's download URL for proper base IRI resolution.
-    This ensures relative IRIs in the uploaded file resolve correctly.
+    The named graph URI is set based on whether reasoning is enabled:
+    - With reasoning: Uses inference graph name (urn:x-arq:InferenceGraph:resource_url)
+    - Without reasoning: Uses resource URL directly
+    
+    Args:
+        resource: Resource dictionary with 'url' and other metadata
+        graph_url: Base URL of the Fuseki dataset
+        api_key: Optional API key for authentication
+        reasoning: Whether reasoning is enabled for this dataset
     """
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
     
-    # Use the resource URL as the named graph URI for proper IRI resolution
-    # This is critical for relative IRI resolution in the uploaded RDF
-    named_graph_uri = resource["url"]
+    # Determine the named graph URI based on reasoning setting
+    if reasoning:
+        # With reasoning: Upload to inference graph name
+        # This routes through the inference model to the base storage
+        named_graph_uri = f"urn:x-arq:InferenceGraph:{resource['url']}"
+        log.info(f"Reasoning enabled: uploading to inference graph {named_graph_uri}")
+    else:
+        # Without reasoning: Upload directly to resource URL
+        named_graph_uri = resource["url"]
+        log.debug(f"No reasoning: uploading to raw graph {named_graph_uri}")
     
     # Use Graph Store Protocol with ?graph= parameter to specify the named graph
     graph_store_url = graph_url + "/data?graph=" + requests.utils.quote(named_graph_uri, safe='')
@@ -191,6 +210,7 @@ def graph_create(
     persistant: bool = False,
     reasoning: bool = False,
     reasoner: str = "fullOWL",
+    resources: list = None,
 ):
     """
     Create a new dataset in Fuseki and update the union service.
@@ -198,6 +218,9 @@ def graph_create(
     This implements a two-step approach:
     1. Create the individual dataset with its assembly
     2. Wait for it to become operational, then update the union service
+    
+    Args:
+        resources: List of resource dictionaries with 'url' and other metadata
     """
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
@@ -206,18 +229,18 @@ def graph_create(
     # Step 1: Create the individual dataset
     jena_dataset_create_url = jena_base_url + "$/datasets"
     assembly_graph = create_assembly(
-        dataset_url, graph_id, persistant, reasoning, reasoner
+        dataset_url, graph_id, persistant, reasoning, reasoner, resources=resources
     )
     file_data = assembly_graph.serialize(format="turtle")
     
     # DEBUG: Save individual dataset assembly to file for inspection
-    # debug_file = os.path.join(os.path.dirname(__file__), "assembly_debug.ttl")
-    # try:
-    #     with open(debug_file, 'w') as f:
-    #         f.write(file_data)
-    #     log.info(f"DEBUG: Saved dataset assembly to {debug_file}")
-    # except Exception as e:
-    #     log.warning(f"Could not save debug file: {e}")
+    debug_file = os.path.join(os.path.dirname(__file__), f"assembly_debug_{graph_id}.ttl")
+    try:
+        with open(debug_file, 'w') as f:
+            f.write(file_data)
+        log.info(f"DEBUG: Saved dataset assembly to {debug_file}")
+    except Exception as e:
+        log.warning(f"Could not save debug file: {e}")
     
     files = {"file": ("assembly.ttl", file_data, "text/turtle", {"Expires": "0"})}
 
@@ -230,29 +253,8 @@ def graph_create(
     response.raise_for_status()
     log.info(f"Created dataset {graph_id} in Fuseki")
     
-    # Step 2: Wait for the dataset to become operational, then update union service
-    # Give the dataset a moment to initialize
-    max_retries = 3
-    retry_delay = 1.0  # seconds
-    
-    for attempt in range(max_retries):
-        time.sleep(retry_delay)
-        
-        if verify_dataset_operational(graph_id):
-            log.info(f"Dataset {graph_id} is operational, updating union service")
-            try:
-                update_union_service()
-                log.info("Union service updated successfully")
-                break
-            except Exception as e:
-                log.warning(f"Failed to update union service on attempt {attempt + 1}: {e}")
-                if attempt == max_retries - 1:
-                    log.error(f"Failed to update union service after {max_retries} attempts")
-        else:
-            log.debug(f"Dataset {graph_id} not yet operational, attempt {attempt + 1}/{max_retries}")
-            if attempt == max_retries - 1:
-                log.warning(f"Dataset {graph_id} not operational after {max_retries} attempts, union service may be out of sync")
-    
+    # Return the dataset URL
+    # Note: Union service management is handled by the caller
     return jena_base_url + "{graph_id}".format(graph_id=graph_id)
 
 
@@ -263,15 +265,21 @@ def create_assembly(
     reasoning: bool = False,
     reasoner: str = "fullOWL",
     unionDefaultGraph: bool = True,  # Changed default to True
+    resources: list = None,
 ):
     """
     Create assembly for a Fuseki dataset.
     
-    Named graphs are NOT pre-defined here - they are created dynamically during resource upload.
-    Each uploaded resource becomes its own named graph (using resource download URL as graph name).
+    Named graphs are pre-defined for each resource that will be uploaded.
+    Each resource becomes its own named graph (using resource download URL as graph name).
     
     With unionDefaultGraph=true, queries to the default graph return the union of all named graphs.
+    
+    Args:
+        resources: List of resource dictionaries with 'url' and other metadata
     """
+    if resources is None:
+        resources = []
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_dataset_namespace = jena_base_url + "$/dataset/"
     BASE = Namespace(jena_dataset_namespace)
@@ -291,42 +299,132 @@ def create_assembly(
         g.add((dataset, TDB2.location, Literal("--mem--")))
     
     # ALWAYS enable unionDefaultGraph so default graph queries return data from named graphs
-    # Named graphs are created dynamically when resources are uploaded
     g.add((dataset, TDB2.unionDefaultGraph, Literal(True)))
     
-    # NOTE: We do NOT pre-define named graphs here anymore!
-    # Named graphs are created dynamically during resource_upload()
-    # Each resource upload specifies its own named graph URI (the resource download URL)
+    # Log resource information
+    log.info(f"Creating assembly for {len(resources)} resources")
+    for res in resources:
+        log.debug(f"  - Resource URL: {res.get('url', 'unknown')}")
     
     # create services
     service = URIRef("service", BASE)
     g.add((service, RDF.type, FUS.Service))
     g.add((service, FUS.name, Literal(dataset_id)))
-    g.add((service, FUS.serviceQuery, Literal("sparql")))
-    g.add((service, FUS.serviceQuery, Literal("query")))
-    g.add((service, FUS.serviceUpdate, Literal("update")))
-    g.add((service, FUS.serviceUpload, Literal("upload")))
-    g.add((service, FUS.serviceReadGraphStore, Literal("get")))
-    g.add((service, FUS.serviceReadWriteGraphStore, Literal("data")))
     
     # Handle reasoning if requested
-    reasoner_url = Reasoners.get_value(reasoner)
-    if reasoning and reasoner_url:
-        # For reasoning, we need a graph reference - but named graphs are dynamic
-        # This may need adjustment for reasoning to work properly with dynamic named graphs
-        log.warning("Reasoning with dynamic named graphs may not work as expected")
-        inf_model = URIRef("inf_model", BASE)
-        g.add((inf_model, RDF.type, JA.InfModel))
-        # Can't reference a specific graph since they're dynamic
-        # Just reference the dataset itself
-        g.add((inf_model, JA.baseModel, dataset))
-        g.add((inf_model, JA.reasoner, URIRef(reasoner_url)))
-        inf_data = URIRef("inf_dataset", BASE)
-        g.add((inf_data, RDF.type, JA.RDFDataset))
-        g.add((inf_data, JA.defaultGraph, inf_model))
-        g.add((service, FUS.dataset, inf_data))
+    if reasoning and resources:
+        # Check if reasoner is already an IRI/URL, otherwise look up in enum
+        if reasoner and reasoner.startswith("http://"):
+            reasoner_url = reasoner  # Already an IRI, use directly
+        else:
+            reasoner_url = Reasoners.get_value(reasoner)  # Name, look up in enum
+        
+        if reasoner_url:
+            log.info(f"Creating Scenario 3 assembly: reasoning with {len(resources)} named graphs")
+            
+            # Create union graph for inference on all resources
+            union_graph = URIRef("union_graph", BASE)
+            g.add((union_graph, RDF.type, TDB2.GraphTDB2))
+            g.add((union_graph, TDB2.dataset, dataset))
+            g.add((union_graph, TDB2.graphName, URIRef("urn:x-arq:UnionGraph")))
+            
+            # Create inference model on union graph
+            model_inf = URIRef("model_inf", BASE)
+            g.add((model_inf, RDF.type, JA.InfModel))
+            g.add((model_inf, JA.baseModel, union_graph))
+            g.add((model_inf, JA.reasoner, URIRef(reasoner_url)))
+            
+            # Create RDFDataset with inference model as default graph
+            inf_dataset = URIRef("inf_dataset", BASE)
+            g.add((inf_dataset, RDF.type, JA.RDFDataset))
+            g.add((inf_dataset, JA.defaultGraph, model_inf))
+            
+            # For each resource: create raw graph + inference model + add to dataset
+            for idx, res in enumerate(resources):
+                res_url = res.get('url')
+                if not res_url:
+                    log.warning(f"Resource {idx} has no URL, skipping")
+                    continue
+                
+                # Sanitize resource URL for use in URI (replace special chars)
+                res_id = f"res_{idx}"
+                
+                # Create tdb2:GraphTDB2 for the raw named graph
+                raw_graph = URIRef(f"{res_id}_raw", BASE)
+                g.add((raw_graph, RDF.type, TDB2.GraphTDB2))
+                g.add((raw_graph, TDB2.dataset, dataset))
+                g.add((raw_graph, TDB2.graphName, URIRef(res_url)))
+                
+                # Create inference model on this specific graph
+                inf_model = URIRef(f"{res_id}_inf", BASE)
+                g.add((inf_model, RDF.type, JA.InfModel))
+                g.add((inf_model, JA.baseModel, raw_graph))
+                g.add((inf_model, JA.reasoner, URIRef(reasoner_url)))
+                
+                # Add raw named graph to dataset
+                raw_ng_spec = BNode()
+                g.add((inf_dataset, JA.namedGraph, raw_ng_spec))
+                g.add((raw_ng_spec, JA.graphName, URIRef(res_url)))
+                g.add((raw_ng_spec, JA.graph, raw_graph))
+                
+                # Add inference named graph to dataset
+                inf_ng_spec = BNode()
+                g.add((inf_dataset, JA.namedGraph, inf_ng_spec))
+                g.add((inf_ng_spec, JA.graphName, URIRef(f"urn:x-arq:InferenceGraph:{res_url}")))
+                g.add((inf_ng_spec, JA.graph, inf_model))
+                
+                log.debug(f"Added named graph for {res_url}")
+            
+            # CRITICAL: Service must point to RDFDataset wrapper to expose named graphs!
+            # This allows Fuseki to see the pre-defined named graphs (raw + inference)
+            g.add((service, FUS.dataset, inf_dataset))
+            
+            # Use standard service shortcuts (no custom endpoints needed)
+            g.add((service, FUS.serviceQuery, Literal("sparql")))
+            g.add((service, FUS.serviceQuery, Literal("query")))
+            g.add((service, FUS.serviceUpdate, Literal("update")))
+            g.add((service, FUS.serviceUpload, Literal("upload")))
+            g.add((service, FUS.serviceReadGraphStore, Literal("get")))
+            g.add((service, FUS.serviceReadWriteGraphStore, Literal("data")))
+            
+            log.info(f"Reasoning assembly complete: {len(resources)} resources with inference models")
+        else:
+            log.warning(f"Invalid reasoner parameter: {reasoner}, creating dataset without reasoning")
+            # Fallback to standard configuration
+            g.add((service, FUS.dataset, dataset))
+            g.add((service, FUS.serviceQuery, Literal("sparql")))
+            g.add((service, FUS.serviceQuery, Literal("query")))
+            g.add((service, FUS.serviceUpdate, Literal("update")))
+            g.add((service, FUS.serviceUpload, Literal("upload")))
+            g.add((service, FUS.serviceReadGraphStore, Literal("get")))
+            g.add((service, FUS.serviceReadWriteGraphStore, Literal("data")))
     else:
+        # No reasoning - standard configuration
         g.add((service, FUS.dataset, dataset))
+        g.add((service, FUS.serviceQuery, Literal("sparql")))
+        g.add((service, FUS.serviceQuery, Literal("query")))
+        g.add((service, FUS.serviceUpdate, Literal("update")))
+        g.add((service, FUS.serviceUpload, Literal("upload")))
+        g.add((service, FUS.serviceReadGraphStore, Literal("get")))
+        g.add((service, FUS.serviceReadWriteGraphStore, Literal("data")))
+        
+        if resources:
+            log.info(f"Pre-defining {len(resources)} named graphs (no reasoning)")
+            # Pre-define named graphs for each resource
+            for idx, res in enumerate(resources):
+                res_url = res.get('url')
+                if not res_url:
+                    log.warning(f"Resource {idx} has no URL, skipping")
+                    continue
+                
+                # Create tdb2:GraphTDB2 for each named graph
+                res_id = f"res_{idx}"
+                named_graph = URIRef(f"{res_id}_graph", BASE)
+                g.add((named_graph, RDF.type, TDB2.GraphTDB2))
+                g.add((named_graph, TDB2.dataset, dataset))
+                g.add((named_graph, TDB2.graphName, URIRef(res_url)))
+                
+                log.debug(f"Pre-defined named graph for {res_url}")
     
     # shacl
     shacl = BNode()
@@ -407,6 +505,36 @@ def verify_dataset_operational(dataset_id):
     except Exception as e:
         log.debug(f"Dataset {dataset_id} not yet operational: {e}")
         return False
+
+
+def verify_dataset_deleted(dataset_id, max_retries=10, retry_delay=1.0):
+    """
+    Verify that a dataset has been completely deleted from Fuseki.
+    
+    Polls Fuseki's dataset list to ensure the dataset is no longer referenced.
+    This prevents issues with incomplete cleanup before recreation.
+    
+    Args:
+        dataset_id: The dataset ID to check for deletion
+        max_retries: Maximum number of polling attempts (default 10)
+        retry_delay: Delay between attempts in seconds (default 1.0)
+    
+    Returns:
+        bool: True if dataset is confirmed deleted, False if still exists after max retries
+    """
+    for attempt in range(max_retries):
+        datasets = get_all_datasets()
+        dataset_names = [ds['name'].lstrip('/') for ds in datasets]
+        
+        if dataset_id not in dataset_names:
+            log.info(f"Dataset {dataset_id} confirmed deleted after {attempt + 1} attempts")
+            return True
+        
+        log.debug(f"Dataset {dataset_id} still in list, waiting... (attempt {attempt + 1}/{max_retries})")
+        time.sleep(retry_delay)
+    
+    log.error(f"Dataset {dataset_id} still exists after {max_retries} attempts")
+    return False
 
 
 def create_union_assembly(dataset_info_list):
@@ -685,16 +813,21 @@ def create_federated_query(original_query, dataset_ids):
     return original_query
 
 
-def update_union_service():
+def create_union_service():
     """
-    Update the union service to include all current datasets.
+    Create a union service from all currently existing datasets.
     
-    This implements a two-step approach:
-    1. Individual datasets are created first with their own assemblies
-    2. Union service is created/updated separately using ja:namedGraph pattern
+    This is a pure creation function - it does NOT handle deletion.
+    The caller is responsible for deleting the old union service first if needed.
     
-    Since we can't modify existing services, we delete and recreate the union.
-    This works with both persistent and in-memory datasets.
+    This function:
+    1. Gets list of all existing datasets from Fuseki
+    2. Filters out 'ds', 'union', and non-operational datasets
+    3. Creates a new union service assembly
+    4. Posts it to Fuseki
+    
+    Returns:
+        bool: True if union service was created successfully, False otherwise
     """
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
@@ -704,8 +837,8 @@ def update_union_service():
     datasets = get_all_datasets()
     
     if not datasets:
-        log.info("No datasets found, skipping union service update")
-        return
+        log.info("No datasets found, skipping union service creation")
+        return False
     
     # Build dataset info list (dataset_id, dataset_location) for operational datasets only
     dataset_info = []
@@ -715,9 +848,9 @@ def update_union_service():
         # Strip leading slash from dataset ID for comparison and path construction
         clean_ds_id = ds_id.lstrip('/')
         
-        # Skip the 'ds' dataset (it's a default TDB1 service without proper config)
-        if clean_ds_id == 'ds':
-            log.debug(f"Skipping 'ds' dataset (default TDB1 service)")
+        # Skip 'ds' (default TDB1) and 'union' (the service we're building!)
+        if clean_ds_id in ['ds', 'union']:
+            log.debug(f"Skipping '{clean_ds_id}' dataset")
             continue
         
         # Verify the dataset is operational before including in union
@@ -726,42 +859,20 @@ def update_union_service():
             continue
         
         # Determine the database location for the dataset
-        # Try persistent location first, fallback to in-memory
-        # Note: We assume persistent storage by default to match create_assembly behavior
+        # We assume persistent storage by default to match create_assembly behavior
         dataset_location = f"/fuseki-base/databases/{clean_ds_id}"
         dataset_info.append((clean_ds_id, dataset_location))
     
     if not dataset_info:
-        log.info("No operational datasets found, skipping union service update")
-        return
+        log.info("No operational datasets found, skipping union service creation")
+        return False
     
-    log.info(f"Updating union service with {len(dataset_info)} operational datasets")
-    
-    # Delete existing union service (if it exists)
-    try:
-        delete_url = jena_base_url + "$/datasets/union"
-        response = requests.delete(
-            delete_url,
-            auth=(jena_username, jena_password),
-            verify=SSL_VERIFY,
-        )
-        log.info("Deleted existing union service")
-    except Exception as e:
-        log.debug(f"Union service didn't exist or couldn't be deleted: {e}")
+    log.info(f"Creating union service with {len(dataset_info)} operational datasets")
     
     # Create new union service using named graphs with existing dataset references
     try:
         union_assembly = create_union_assembly_named_graphs(dataset_info)
         file_data = union_assembly.serialize(format="turtle")
-        
-        # DEBUG: Save assembly to file for inspection
-        # debug_file = os.path.join(os.path.dirname(__file__), "union_assembly_debug.ttl")
-        # try:
-        #     with open(debug_file, 'w') as f:
-        #         f.write(file_data)
-        #     log.info(f"DEBUG: Saved union assembly to {debug_file}")
-        # except Exception as e:
-        #     log.warning(f"Could not save debug file: {e}")
         
         files = {"file": ("union_assembly.ttl", file_data, "text/turtle", {"Expires": "0"})}
         
@@ -773,10 +884,9 @@ def update_union_service():
             verify=SSL_VERIFY,
         )
         response.raise_for_status()
-        log.info(f"Successfully created federated union service with {len(dataset_info)} datasets (NO data copying)")
-        log.info("NOTE: To query across all datasets, use SPARQL federation with SERVICE keyword")
-        log.info("Each individual dataset already unions its own resources via unionDefaultGraph=true")
+        log.info(f"Successfully created union service with {len(dataset_info)} datasets")
+        return True
         
     except Exception as e:
         log.error(f"Failed to create union service: {e}")
-        raise
+        return False

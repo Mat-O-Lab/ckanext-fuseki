@@ -80,44 +80,69 @@ def update(
     callback_fuseki_hook(callback_url, api_key=FUSEKI_CKAN_TOKEN, job_dict=job_dict)
     _graph = backend.get_graph(dataset_id)
     logger.debug("{} {}".format(dataset_id, res_ids))
+    
+    # Always recreate datasets to ensure configuration changes (reasoning, etc.) are applied
     if _graph:
-        logger.info("Found existing graph in store: {}".format(_graph))
-    else:
-        _graph = backend.graph_create(
-            dataset_url, dataset_id, persistant, reasoning, reasoner
-        )
-        logger.info("Creating graph in store: {}".format(_graph))
-    # logger.debug("Creating fuseki assembly file.")
-    # assembly_graph = backend.create_assembly(
-    #    dataset_url, dataset_id, unionDefaultGraph=True
-    # )
-    # assembly_str = assembly_graph.serialize(format="turtle")
-    # assembly_filename = "assembly.ttl"
-    # assembly_res = resource_search(dataset_id, assembly_filename)
-    # if assembly_res:
-    #     logger.debug("Found existing assembly resource {}".format(assembly_res))
-    #     existing_id = assembly_res["id"]
-    # else:
-    #     existing_id = None
-    # r = file_upload(
-    #     dataset_id,
-    #     assembly_filename,
-    #     assembly_str.encode(),
-    #     res_id=existing_id,
-    #     mime_type="text/turtle",
-    #     authorization=FUSEKI_CKAN_TOKEN,
-    # )
-    logger.debug("Uploading {} to graph in store at {}".format(dataset_id, _graph))
-    for res_id in res_ids:
-        _res = get_action("resource_show")(context, {"id": res_id})
+        logger.info("Found existing graph, recreating to apply configuration changes")
+        
+        # Step 1: Delete union service first to avoid reference errors
         try:
-            backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN)
+            union_exists = backend.resource_exists("union")
+            if union_exists:
+                backend.graph_delete("union")
+                logger.info("Deleted union service before dataset recreation")
+        except Exception as e:
+            logger.warning(f"Could not delete union service: {e}")
+        
+        # Step 2: Delete the existing dataset
+        try:
+            backend.graph_delete(dataset_id)
+            logger.info(f"Deleted existing dataset {dataset_id}")
+        except Exception as e:
+            logger.warning(f"Could not delete existing dataset: {e}")
+        
+        # Step 3: CRITICAL - Wait and verify the dataset is completely deleted
+        # This prevents data accumulation from incomplete cleanup
+        logger.info(f"Verifying dataset {dataset_id} is completely deleted...")
+        if not backend.verify_dataset_deleted(dataset_id):
+            logger.error(f"Dataset {dataset_id} still exists after deletion, recreation may fail!")
+        else:
+            logger.info(f"Dataset {dataset_id} confirmed deleted, safe to recreate")
+    
+    # Step 3: Get resources first (needed for assembly creation)
+    resources = []
+    for res_id in res_ids:
+        try:
+            _res = get_action("resource_show")(context, {"id": res_id})
+            resources.append(_res)
+        except Exception as e:
+            logger.warning(f"Could not fetch resource {res_id}: {e}")
+    
+    # Step 4: Create dataset with current configuration and resources
+    _graph = backend.graph_create(
+        dataset_url, dataset_id, persistant, reasoning, reasoner, resources=resources
+    )
+    logger.info("Created graph with configuration: persistent={}, reasoning={}, reasoner={}, resources={}".format(
+        persistant, reasoning, reasoner, len(resources)
+    ))
+    
+    logger.debug("Uploading {} resources to graph in store at {}".format(len(resources), _graph))
+    for _res in resources:
+        try:
+            backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN, reasoning=reasoning)
         except Exception as e:
             logger.error(
-                "Upload {} to graph in store failed: {}".format(_res["url"], e)
+                "Upload {} to graph in store failed: {}".format(_res.get("url", "unknown"), e)
             )
         else:
-            logger.info("Upload {} to graph {} successfull".format(_res["url"], _graph))
+            logger.info("Upload {} to graph {} successful".format(_res.get("url", "unknown"), _graph))
+    
+    # Step 5: Create/update union service after all resources are uploaded
+    logger.info("Creating union service from all datasets...")
+    if backend.create_union_service():
+        logger.info("Union service created successfully")
+    else:
+        logger.warning("Union service creation failed or skipped")
     # create a link to the sparql endpoint
     link = resource_search(dataset_id, SPARQL_RES_NAME)
     if link:
