@@ -127,6 +127,24 @@ def update(
     ))
     
     logger.debug("Uploading {} resources to graph in store at {}".format(len(resources), _graph))
+    
+    # Build list of graph URIs that should exist after upload
+    expected_graph_uris = []
+    for _res in resources:
+        if reasoning:
+            # With reasoning, we have BOTH raw and inference graphs
+            # Raw graph: stores the actual data
+            raw_graph_uri = _res['url']
+            # Inference graph: provides inferred triples
+            inf_graph_uri = f"urn:x-arq:InferenceGraph:{_res['url']}"
+            expected_graph_uris.append(raw_graph_uri)
+            expected_graph_uris.append(inf_graph_uri)
+        else:
+            # Without reasoning, only the raw graph exists
+            graph_uri = _res['url']
+            expected_graph_uris.append(graph_uri)
+    
+    # Upload each resource (PUT replaces graph content)
     for _res in resources:
         try:
             backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN, reasoning=reasoning)
@@ -136,6 +154,14 @@ def update(
             )
         else:
             logger.info("Upload {} to graph {} successful".format(_res.get("url", "unknown"), _graph))
+    
+    # Step 4.5: Clean up orphaned graphs (resources removed from dataset)
+    logger.info("Cleaning up orphaned graphs...")
+    try:
+        backend.graph_clear_specific(dataset_id, expected_graph_uris)
+        logger.info("Orphaned graph cleanup complete")
+    except Exception as e:
+        logger.warning(f"Could not clean up orphaned graphs: {e}")
     
     # Step 5: Create/update union service after all resources are uploaded
     logger.info("Creating union service from all datasets...")

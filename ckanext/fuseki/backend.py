@@ -56,20 +56,114 @@ if not SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
 
 
-def graph_delete(graph_id: str):
+def graph_clear_specific(graph_id: str, graph_uris_to_keep: list):
+    """
+    Clear named graphs that are NOT in the keep list.
+    
+    This removes orphaned graphs when the resource list changes.
+    Uses Graph Store Protocol DELETE for each unwanted graph.
+    
+    Args:
+        graph_id: The dataset ID
+        graph_uris_to_keep: List of graph URIs that should be kept
+    
+    Returns:
+        bool: True if clearing succeeded, False otherwise
+    """
+    jena_base_url = config.get("ckanext.fuseki.url")
+    jena_username = config.get("ckanext.fuseki.username")
+    jena_password = config.get("ckanext.fuseki.password")
+    
+    try:
+        # Step 1: Query for all existing named graphs in the dataset
+        sparql_url = f"{jena_base_url}{graph_id}/sparql"
+        query = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
+        
+        response = requests.post(
+            sparql_url,
+            data={'query': query},
+            auth=(jena_username, jena_password),
+            headers={'Accept': 'application/sparql-results+json'},
+            verify=SSL_VERIFY,
+            timeout=30
+        )
+        response.raise_for_status()
+        results = response.json()
+        
+        # Extract existing graph URIs
+        existing_graphs = []
+        if 'results' in results and 'bindings' in results['results']:
+            for binding in results['results']['bindings']:
+                if 'g' in binding:
+                    existing_graphs.append(binding['g']['value'])
+        
+        # Find graphs to delete (exist but not in keep list)
+        graphs_to_delete = [g for g in existing_graphs if g not in graph_uris_to_keep]
+        
+        if not graphs_to_delete:
+            log.debug(f"No orphaned graphs to delete in dataset {graph_id}")
+            return True
+        
+        log.info(f"Deleting {len(graphs_to_delete)} orphaned graphs from dataset {graph_id}")
+        
+        # Step 2: Delete each orphaned graph using Graph Store Protocol
+        success = True
+        for graph_uri in graphs_to_delete:
+            try:
+                graph_delete_url = f"{jena_base_url}{graph_id}/data?graph={requests.utils.quote(graph_uri, safe='')}"
+                delete_response = requests.delete(
+                    graph_delete_url,
+                    auth=(jena_username, jena_password),
+                    verify=SSL_VERIFY,
+                )
+                delete_response.raise_for_status()
+                log.info(f"Deleted orphaned named graph: {graph_uri}")
+            except Exception as e:
+                log.warning(f"Could not delete named graph {graph_uri}: {e}")
+                success = False
+        
+        return success
+        
+    except Exception as e:
+        log.error(f"Failed to clear orphaned graphs from dataset {graph_id}: {e}")
+        return False
+
+
+def graph_delete(graph_id: str, clear_data: bool = False):
     """
     Delete a dataset from Fuseki.
     
-    This function only deletes the dataset - it does NOT update the union service.
+    This function deletes the dataset service. Optionally clears data first if clear_data=True.
+    
+    Note: For persistent datasets with reasoning, clearing data before deletion often fails
+    due to TransactionCoordinator issues. Instead, we rely on Graph Store Protocol's
+    natural replacement behavior when re-uploading to the same named graphs.
+    
     The caller is responsible for managing the union service lifecycle.
     
     Args:
         graph_id: The dataset ID to delete
+        clear_data: Whether to attempt clearing data before deletion (usually False)
     """
     jena_base_url = config.get("ckanext.fuseki.url")
     jena_username = config.get("ckanext.fuseki.username")
     jena_password = config.get("ckanext.fuseki.password")
     result = dict(resource_id=graph_id)
+    
+    # Optional: Clear all data from the dataset BEFORE deleting the service
+    # DISABLED: Causes TransactionCoordinator issues with reasoning datasets
+    # Instead, we rely on PUT (not POST) in resource_upload to replace graph content
+    # if clear_data:
+    #     try:
+    #         log.info(f"Attempting to clear data from dataset {graph_id} before deletion")
+    #         graph_clear_all(graph_id)
+    #     except Exception as e:
+    #         log.warning(f"Failed to clear dataset {graph_id} before deletion: {e}")
+    # else:
+    #     log.debug(f"Skipping data clearing for dataset {graph_id} (will be replaced on recreation)")
+    log.debug(f"Skipping data clearing for dataset {graph_id} (using PUT to replace on recreation)")
+    
+    # Delete the dataset service
     try:
         jena_dataset_delete_url = jena_base_url + "$/datasets/{graph_id}".format(
             graph_id=graph_id
@@ -80,7 +174,7 @@ def graph_delete(graph_id: str):
             verify=SSL_VERIFY,
         )
         jena_dataset_delete_res.raise_for_status()
-        log.info(f"Deleted dataset {graph_id}")
+        log.info(f"Deleted dataset service {graph_id}")
             
     except Exception as e:
         log.debug(f"Could not delete dataset {graph_id}: {e}")
@@ -148,7 +242,9 @@ def resource_upload(resource, graph_url, api_key="", reasoning=False):
     
     files = {"file": (resource["name"], file_data, file_type, {"Expires": "0"})}
     
-    jena_upload_res = requests.post(
+    # Use PUT instead of POST to REPLACE graph content (not append)
+    # This ensures uploading the same file multiple times doesn't accumulate data
+    jena_upload_res = requests.put(
         graph_store_url, 
         files=files, 
         auth=(jena_username, jena_password), 

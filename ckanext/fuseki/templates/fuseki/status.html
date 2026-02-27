@@ -37,6 +37,18 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Informational Section -->
+        <div class="alert alert-info mt-3" role="alert">
+            <h5 class="alert-heading"><i class="fa fa-info-circle"></i> {{ _('Apache Jena Fuseki Information') }}</h5>
+            <hr>
+            <ul class="mb-0">
+                <li><strong>{{ _('Named Graphs:') }}</strong> {{ _('Each resource file is uploaded to its own named graph within a dedicated dataset for this CKAN package.') }}</li>
+                <li><strong>{{ _('Union Endpoint:') }}</strong> {{ _('All persistent datasets can be queried together using the') }} <code>/union</code> {{ _('endpoint, which provides a unified view across all stored graphs.') }}</li>
+                <li><strong>{{ _('Public Access:') }}</strong> {{ _('All data stored in Fuseki is publicly accessible without authentication.') }}</li>
+                <li><strong>{{ _('Persistent Storage:') }}</strong> {{ _('Only persistent datasets are included in the union endpoint. In-memory datasets are temporary and excluded from cross-dataset queries.') }}</li>
+            </ul>
+        </div>
         <hr class="">
         {% if status.metadata is defined %}
         {% set reasoner = status.metadata.reasoner %}
@@ -55,16 +67,20 @@
         <div class="row m-0 gx-3 gy-2 align-items-center">
             <div class="col-auto">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name='persistent' id="check-persistent" {% if
-                        persistant%}checked{% endif %}>
+                    <input class="form-check-input" type="checkbox" name='persistent' id="check-persistent" 
+                        data-bs-toggle="tooltip" 
+                        title="{{ _('Store data persistently on disk. Persistent datasets survive server restarts and are included in the union endpoint for cross-dataset queries.') }}"
+                        {% if persistant%}checked{% endif %}>
                     <label class="form-check-label" for="check-persistent">persistent</label>
                 </div>
 
             </div>
             <div class="col-auto">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name='reasoning' id="check-reasoning" {% if
-                        reasoning%}checked{% endif %}>
+                    <input class="form-check-input" type="checkbox" name='reasoning' id="check-reasoning" 
+                        data-bs-toggle="tooltip" 
+                        title="{{ _('Enable OWL/RDFS reasoning to infer additional triples based on ontology definitions. This computes implicit knowledge from explicit statements.') }}"
+                        {% if reasoning%}checked{% endif %}>
                     <label class="form-check-label" for="check-reasoning">reasoning</label>
                 </div>
             </div>

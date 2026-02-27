@@ -15,6 +15,13 @@ ckan.module('fuseki', function (jQuery) {
       var p;
       p = this.options.parameters.html;
       console.log("Initialized Fuseki for element: ", this.el);
+      
+      // Initialize Bootstrap tooltips
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+      
       var log_length;
       log_length = 0;
       var update = function () { // define the update function
