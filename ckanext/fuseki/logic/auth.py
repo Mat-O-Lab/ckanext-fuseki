@@ -58,10 +58,25 @@ def fuseki_update_status(context, data_dict):
     return task_status_show(context, data_dict)
 
 
+@p.toolkit.auth_allow_anonymous_access
+def fuseki_proxy(context, data_dict):
+    """
+    Authorization for transparent Fuseki proxy.
+    
+    Allows access based on dataset visibility:
+    - Public datasets: anyone can access (anonymous allowed)
+    - Private datasets: requires authentication and authorization
+    
+    Uses package_show permission check.
+    """
+    return jena_auth(context, data_dict, "package_show")
+
+
 def get_auth_functions():
     return {
         "fuseki_delete": fuseki_delete,
         "fuseki_update": fuseki_update,
         "fuseki_update_status": fuseki_update_status,
         "jena_search_sparql": jena_search_sparql,
+        "fuseki_proxy": fuseki_proxy,
     }

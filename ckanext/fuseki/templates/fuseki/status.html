@@ -40,12 +40,29 @@
         
         <!-- Informational Section -->
         <div class="alert alert-info mt-3" role="alert">
-            <h5 class="alert-heading"><i class="fa fa-info-circle"></i> {{ _('Apache Jena Fuseki Information') }}</h5>
+            <h5 class="alert-heading"><i class="fa fa-info-circle"></i> {{ _('Apache Jena Fuseki Access Information') }}</h5>
             <hr>
             <ol class="mb-0">
                 <li class="mb-2">
-                    <strong>{{ _('Public Access:') }}</strong> 
-                    {{ _('All data stored in Fuseki is publicly accessible without authentication.') }}
+                    <strong>{{ _('Secured Access:') }}</strong> 
+                    {% if pkg_dict.private %}
+                    {{ _('This is a <strong>private dataset</strong>. SPARQL endpoints are only accessible to authorized CKAN users with read permission on this dataset.') }}
+                    {% else %}
+                    {{ _('This is a <strong>public dataset</strong>. SPARQL endpoints are accessible to anyone without authentication.') }}
+                    {% endif %}
+                </li>
+                <li class="mb-2">
+                    <strong>{{ _('Authentication Methods:') }}</strong>
+                    <ul class="mb-0">
+                        <li>{{ _('<strong>Browser:</strong> Log in to CKAN and access endpoints through your browser session') }}</li>
+                        <li>{{ _('<strong>API/curl:</strong> Use CKAN API token in Authorization header') }} 
+                            <code style="font-size: 0.85em;">Authorization: YOUR_API_TOKEN</code>
+                        </li>
+                    </ul>
+                </li>
+                <li class="mb-2">
+                    <strong>{{ _('SPARQL Endpoint:') }}</strong> 
+                    <code style="font-size: 0.85em;">{{ h.fuseki_sparql_url(pkg_dict) }}</code>
                 </li>
                 <li class="mb-2">
                     <strong>{{ _('Named Graphs:') }}</strong> 

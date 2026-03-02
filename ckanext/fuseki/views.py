@@ -1,11 +1,12 @@
 import ckan.lib.base as base
 import ckan.lib.helpers as core_helpers
 import ckan.plugins.toolkit as toolkit
-from ckan.common import _
-from flask import Blueprint, redirect, request
+from ckan.common import _, config
+from flask import Blueprint, redirect, request, Response, make_response
 from flask.views import MethodView
+import requests
 
-from ckanext.fuseki.backend import Reasoners
+from ckanext.fuseki.backend import Reasoners, SSL_VERIFY
 from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 
 log = __import__("logging").getLogger(__name__)
@@ -130,11 +131,14 @@ def query_view(id: str):
 
 
 blueprint.add_url_rule(
-    "/dataset/<id>/fuseki", view_func=FusekiView.as_view(str("fuseki"))
+    "/dataset/<id>/fuseki",
+    view_func=FusekiView.as_view(str("fuseki")),
+    strict_slashes=False  # Handle both /fuseki and /fuseki/
 )
 blueprint.add_url_rule(
     "/dataset/<id>/fuseki/status",
     view_func=StatusView.as_view(str("status")),
+    strict_slashes=False
 )
 
 blueprint.add_url_rule(
@@ -142,6 +146,143 @@ blueprint.add_url_rule(
     view_func=query_view,
     endpoint="query",
     methods=["GET"],
+    strict_slashes=False
+)
+
+
+def fuseki_proxy(id: str, service_path: str = ''):
+    """
+    Transparent proxy to Fuseki with CKAN authentication.
+    
+    This view forwards all requests to the Fuseki dataset endpoint,
+    using admin credentials to authenticate with Fuseki while checking
+    CKAN permissions to ensure the user can access the dataset.
+    
+    URL pattern: /dataset/{id}/fuseki/$[/{service_path}]
+    Forwards to: {fuseki_url}/{dataset_uuid}[/{service_path}]
+    
+    The $ separator prevents conflicts with existing CKAN routes like:
+    - /dataset/{id}/fuseki (management UI)
+    - /dataset/{id}/fuseki/status (status page)
+    - /dataset/{id}/fuseki/query (redirect to query UI)
+    
+    Args:
+        id: Dataset/package ID (can be name/slug or UUID)
+        service_path: Fuseki service path (e.g., 'sparql', 'query', 'update', 'data'), empty for root
+    
+    Returns:
+        Proxied response from Fuseki
+    """
+    # Fetch package to get UUID (in case id is a name/slug)
+    # This also performs the permission check
+    try:
+        pkg_dict = toolkit.get_action('package_show')(
+            {'user': toolkit.c.user or toolkit.c.author},
+            {'id': id}
+        )
+        dataset_uuid = pkg_dict['id']  # This is always the UUID
+    except toolkit.NotAuthorized:
+        toolkit.abort(403, _('Not authorized to access this dataset'))
+    except toolkit.ObjectNotFound:
+        toolkit.abort(404, _('Dataset not found'))
+    except Exception as e:
+        log.error(f"Error fetching package {id}: {e}")
+        toolkit.abort(500, _('Internal server error'))
+    
+    # Get Fuseki configuration
+    # Use internal docker network address for proxy, not external nginx URL
+    # External URL (ckanext.fuseki.url) may loop back through nginx
+    fuseki_internal_url = config.get('ckanext.fuseki.internal_url', '')
+    if not fuseki_internal_url:
+        # Fallback: try to derive from ckanext.fuseki.url or use default
+        fuseki_external_url = config.get('ckanext.fuseki.url', '').rstrip('/')
+        # If external URL contains /fuseki/, it's going through nginx - use internal address
+        if '/fuseki/' in fuseki_external_url or '/fuseki' in fuseki_external_url:
+            fuseki_internal_url = 'http://fuseki:3030'
+            log.warning(f"Using internal Fuseki URL {fuseki_internal_url} instead of external {fuseki_external_url} to avoid nginx loop")
+        else:
+            fuseki_internal_url = fuseki_external_url
+    
+    username = config.get('ckanext.fuseki.username', 'admin')
+    password = config.get('ckanext.fuseki.password', 'admin')
+    
+    if not fuseki_internal_url:
+        toolkit.abort(500, _('Fuseki URL not configured'))
+    
+    # Build target URL - forward to Fuseki dataset endpoint using UUID
+    # Fuseki datasets are created with UUID, not name
+    if service_path:
+        target_url = f"{fuseki_internal_url}/{dataset_uuid}/{service_path}"
+    else:
+        # Root path - ensure trailing slash for Fuseki's root page
+        target_url = f"{fuseki_internal_url}/{dataset_uuid}/"
+    
+    if request.query_string:
+        target_url += f"?{request.query_string.decode('utf-8')}"
+    
+    log.info(f"Proxying request to Fuseki: {request.method} {target_url}")
+    
+    # True transparent forwarding - pass ALL headers except Host
+    headers = dict(request.headers)
+    # Remove Host and set it to Fuseki's host
+    headers.pop('Host', None)
+    
+    try:
+        # Forward request to Fuseki with admin credentials
+        # Use stream=True and get raw response to avoid any decoding
+        response = requests.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            data=request.get_data(),
+            auth=(username, password),
+            stream=True,
+            verify=SSL_VERIFY,
+            allow_redirects=False,
+            timeout=300
+        )
+        
+        log.info(f"Fuseki response: {response.status_code}")
+        
+        # Return raw response with ALL headers unchanged
+        # Use response.raw to get the raw socket data without any processing
+        def generate():
+            for chunk in response.raw.stream(8192, decode_content=False):
+                yield chunk
+        
+        # Use make_response to bypass CKAN's error handling and template wrapping
+        flask_response = Response(
+            generate(),
+            status=response.status_code,
+            headers=dict(response.raw.headers),  # Pass ALL headers as-is
+            direct_passthrough=True  # Tell Flask not to modify the response body
+        )
+        
+        return make_response(flask_response)
+        
+    except requests.exceptions.RequestException as e:
+        log.error(f"Error proxying request to Fuseki: {e}")
+        toolkit.abort(502, _('Bad Gateway: Could not connect to Fuseki'))
+
+
+# Single route handles both root and paths
+# Note: Flask's path converter doesn't match empty strings, so we need two rules
+# strict_slashes=False allows both /$ and /$/ to work
+blueprint.add_url_rule(
+    "/dataset/<id>/fuseki/$",
+    view_func=fuseki_proxy,
+    endpoint="fuseki_proxy_root",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+    defaults={'service_path': ''},
+    strict_slashes=False
+)
+
+blueprint.add_url_rule(
+    "/dataset/<id>/fuseki/$/<path:service_path>",
+    view_func=fuseki_proxy,
+    endpoint="fuseki_proxy",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+    strict_slashes=False
 )
 
 

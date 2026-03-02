@@ -47,19 +47,44 @@ def fuseki_graph_exists(graph_id):
 
 
 def fuseki_query_url(pkg_dict):
+    from ckan.plugins import toolkit
+    
     if not SPARKLIS_URL:
-        # fuseki query interface
-        url = "{}#/dataset/{}/query".format(FUSEKI_URL, pkg_dict["id"])
+        # Use CKAN proxy URL for Fuseki query interface
+        # Pattern: /dataset/{id}/fuseki/$/query
+        url = toolkit.url_for('fuseki.fuseki_proxy', 
+                              id=pkg_dict['id'], 
+                              service_path='query',
+                              qualified=True)
     else:
-        # Sparklis interface with rdfs:label configuration for better entity/concept display
-        url = "{}?title={}&endpoint={}{}&entity_lexicon_select=http%3A//www.w3.org/2000/01/rdf-schema%23label&concept_lexicons_select=http%3A//www.w3.org/2000/01/rdf-schema%23label".format(
-            SPARKLIS_URL, pkg_dict["name"], FUSEKI_URL, pkg_dict["id"]
+        # Sparklis interface - use CKAN proxy SPARQL endpoint
+        sparql_endpoint = toolkit.url_for('fuseki.fuseki_proxy', 
+                                         id=pkg_dict['id'], 
+                                         service_path='sparql',
+                                         qualified=True)
+        url = "{}?title={}&endpoint={}&entity_lexicon_select=http%3A//www.w3.org/2000/01/rdf-schema%23label&concept_lexicons_select=http%3A//www.w3.org/2000/01/rdf-schema%23label".format(
+            SPARKLIS_URL, pkg_dict["name"], sparql_endpoint
         )
     return url
 
 
 def fuseki_sparql_url(pkg_dict):
-    url = "{}{}".format(FUSEKI_URL, pkg_dict["id"])
+    """
+    Returns the SPARQL endpoint URL for a dataset.
+    
+    Uses the CKAN proxy endpoint instead of direct Fuseki access
+    for security (CKAN authentication required).
+    
+    Returns: /dataset/{id}/fuseki/$/sparql
+    """
+    from ckan.plugins import toolkit
+    
+    # Return CKAN proxy URL - this handles authentication
+    # Pattern: /dataset/{id}/fuseki/$/{service_path}
+    url = toolkit.url_for('fuseki.fuseki_proxy', 
+                          id=pkg_dict['id'], 
+                          service_path='sparql',
+                          qualified=True)
     return url
 
 

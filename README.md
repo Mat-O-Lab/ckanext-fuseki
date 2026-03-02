@@ -7,17 +7,38 @@ Extension creates a new tab in the dataset view that enables you to upload selec
 ![image](ckan-fuseki.png)
 
 ## Requirements
-Needs a running instance of jena fuseki, see for example docker-compose file in optional folder. 
-Point at it through env variables. Also needed is an api-token for an account with the admin privileges to make the background job work on private datasets and resources.
 
-* Apache Jena and Fuseki server need to be running.
-* <optional> A sparklis web app for querying the dataset, see optional folder for a container deployment of jena fuseki and sparklis.
+* **Apache Jena Fuseki** server with custom security configuration (see [Deployment](#deployment) section)
+* **CKAN API Token** with admin privileges for background job processing of private datasets
+
+### Fuseki Deployment
+
+This extension requires a **custom Fuseki deployment** with modified security settings to enable CKAN-authenticated access. The necessary files are provided in the `optional/` folder:
+
+- **`optional/fuseki/Dockerfile`** - Custom Fuseki image based on `secoresearch/fuseki:4.9.0`
+- **`optional/fuseki/docker-entrypoint.sh`** - Security wrapper that blocks anonymous dataset access
+- **`optional/fuseki/index.html`** - Fixed Fuseki UI for subpath deployment
+- **`optional/docker-compose.yml`** - Example standalone deployment configuration
+
+See the [optional/README.md](optional/README.md) for standalone deployment instructions, or integrate into your existing Docker Compose setup (see [Deployment](#deployment) section below).
+
+**Optional**: A Sparklis web app for interactive SPARQL querying is also available in the optional folder.
 
 ## Purpose
 
 ckanext-fuseki is an extension for enabling the semantic aspect of CKAN with Apache Jena.
 
 This extension provides an ability to let users store a set of semantic resource (e.g. rdf, ttl, owl) in Apache Jena and perform SPARQL semantic queries.
+
+### Security Features
+
+The extension now includes **CKAN-authenticated access** to Fuseki SPARQL endpoints:
+- All dataset access is proxied through CKAN with permission checks
+- Public datasets: accessible to anyone via CKAN proxy
+- Private datasets: requires CKAN authentication (API token or session)
+- Direct Fuseki access: blocked for anonymous users, admin-only
+
+See [SECURITY.md](SECURITY.md) for detailed information about the security architecture and deployment.
 
 ### Notes:
 
@@ -32,22 +53,95 @@ Compatibility with core CKAN versions:
 
 ## Installation
 
-To install the extension:
+### 1. Install the Extension
 
-1. Activate your CKAN virtual environment, for example:
-```bash
-. /usr/lib/ckan/default/bin/activate
-```
-2. Use pip to install package
+**From PyPI:**
 ```bash
 pip install ckanext-fuseki
 ```
-3. Add `fuseki` to the `ckan.plugins` setting in your CKAN
-   config file (by default the config file is located at
-   `/etc/ckan/default/ckan.ini`).
 
-4. Restart CKAN. For example, if you've deployed CKAN with Apache on Ubuntu:
+**From Source:**
 ```bash
+pip install -e git+https://github.com/Mat-O-Lab/ckanext-fuseki.git#egg=ckanext-fuseki
+```
+
+### 2. Deploy Fuseki with Security Configuration
+
+This extension requires Fuseki with a custom entrypoint wrapper that blocks anonymous access.
+
+**Option A: Mount Entrypoint (Simpler - No Build Required)**
+
+```yaml
+services:
+  fuseki:
+    image: secoresearch/fuseki:4.9.0
+    entrypoint: /custom-entrypoint.sh
+    environment:
+      - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
+      - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+      - ENABLE_DATA_WRITE=true
+      - ENABLE_UPDATE=true
+      - ENABLE_UPLOAD=true
+      - QUERY_TIMEOUT=60000
+    volumes:
+      - ./path/to/ckanext-fuseki/optional/fuseki/docker-entrypoint.sh:/custom-entrypoint.sh:ro
+      - jena_data:/fuseki-base
+    networks:
+      - your_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3030/$$/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+```
+
+**Option B: Build Custom Image (includes fixed index.html for subpaths)**
+
+```yaml
+services:
+  fuseki:
+    build:
+      context: path/to/ckanext-fuseki/optional/fuseki/
+    environment:
+      - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
+      - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+      - ENABLE_DATA_WRITE=true
+      - ENABLE_UPDATE=true
+      - ENABLE_UPLOAD=true
+      - QUERY_TIMEOUT=60000
+    volumes:
+      - jena_data:/fuseki-base
+    networks:
+      - your_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3030/$$/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+```
+
+**Start Fuseki:**
+```bash
+# Option A - no build needed
+docker-compose up -d fuseki
+
+# Option B - build first
+docker-compose build fuseki && docker-compose up -d fuseki
+```
+
+### 3. Configure CKAN
+
+Add `fuseki` to the `ckan.plugins` setting in your CKAN config file:
+
+```ini
+ckan.plugins = ... fuseki
+```
+
+### 4. Restart CKAN
+
+```bash
+docker-compose restart ckan
+# Or for Apache deployment:
 sudo service apache2 reload
 ```
 
