@@ -42,8 +42,6 @@ def update(
     persistant: bool = False,
     reasoning: bool = False,
     reasoner: str = "",
-    unionDefaultGraph: bool = False,
-    skip_if_no_changes: bool = True,
 ):
     # url = '{ckan}/dataset/{pkg}/resource/{res_id}/download/{filename}'.format(
     #         ckan=CKAN_URL, pkg=dataset_id, res_id=res_id, filename=res_url)
@@ -85,23 +83,12 @@ def update(
     if _graph:
         logger.info("Found existing graph, recreating to apply configuration changes")
         
-        # Step 1: Delete union service first to avoid reference errors
-        try:
-            union_exists = backend.resource_exists("union")
-            if union_exists:
-                backend.graph_delete("union")
-                logger.info("Deleted union service before dataset recreation")
-        except Exception as e:
-            logger.warning(f"Could not delete union service: {e}")
-        
-        # Step 2: Delete the existing dataset
         try:
             backend.graph_delete(dataset_id)
             logger.info(f"Deleted existing dataset {dataset_id}")
         except Exception as e:
             logger.warning(f"Could not delete existing dataset: {e}")
         
-        # Step 3: CRITICAL - Wait and verify the dataset is completely deleted
         # This prevents data accumulation from incomplete cleanup
         logger.info(f"Verifying dataset {dataset_id} is completely deleted...")
         if not backend.verify_dataset_deleted(dataset_id):
@@ -163,12 +150,6 @@ def update(
     except Exception as e:
         logger.warning(f"Could not clean up orphaned graphs: {e}")
     
-    # Step 5: Create/update union service after all resources are uploaded
-    logger.info("Creating union service from all datasets...")
-    if backend.create_union_service():
-        logger.info("Union service created successfully")
-    else:
-        logger.warning("Union service creation failed or skipped")
     # create a link to the sparql endpoint
     link = resource_search(dataset_id, SPARQL_RES_NAME)
     if link:
