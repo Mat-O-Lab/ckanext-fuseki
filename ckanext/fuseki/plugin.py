@@ -17,6 +17,9 @@ log = logging.getLogger(__name__)
 
 
 class JenaPlugin(p.SingletonPlugin):
+    """CKAN extension that pushes RDF resources to Apache Jena Fuseki,
+    with CKAN-authenticated SPARQL proxy and embedded YASGUI query interface."""
+
     p.implements(p.IConfigurer)
     p.implements(p.IConfigDeclaration)
     p.implements(p.IActions)

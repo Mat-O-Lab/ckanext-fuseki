@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: ckanext-fuseki
+abstract: >-
+  A CKAN extension for semantic data management in research data portals.
+  It automatically pushes RDF resources to an Apache Jena Fuseki triple store,
+  provides a CKAN-authenticated SPARQL proxy that enforces dataset-level access control,
+  and embeds a YASGUI query interface for interactive SPARQL exploration of linked data.
+authors:
+  - family-names: Hanke
+    given-names: Thomas
+    affiliation: Fraunhofer Institute for Mechanics of Materials IWM
+    email: thomas.hanke@iwm.fraunhofer.de
+    orcid: "https://orcid.org/0000-0003-1649-6832"
+repository-code: https://github.com/Mat-O-Lab/ckanext-fuseki
+url: https://github.com/Mat-O-Lab/ckanext-fuseki
+license: AGPL-3.0-or-later
+keywords:
+  - CKAN
+  - open data
+  - data portal
+  - FAIR data
+  - research data management
+  - materials science
+  - Mat-O-Lab
+  - RDF
+  - SPARQL
+  - Fuseki
+  - Apache Jena
+  - semantic web
+  - linked data
+  - Python

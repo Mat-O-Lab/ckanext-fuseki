@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ckanext-fuseki"
 dynamic = ["version"]
-description = "An extension for storing file with Apache Jena"
+description = "CKAN extension that pushes RDF resources to Apache Jena Fuseki, with CKAN-authenticated SPARQL proxy and embedded YASGUI query interface"
 readme = "README.md"
 authors = [
     {name = "Thomas Hanke", email = "thomas.hanke@iwm.fraunhofer.de"}
@@ -14,16 +14,16 @@ license = {text = "AGPL"}
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
-keywords = ["CKAN"]
-requires-python = ">=3.7"
+keywords = ["CKAN", "RDF", "SPARQL", "Fuseki", "Apache Jena", "semantic web", "linked data", "FAIR data"]
+requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://github.com/Mat-O-Lab/ckanext-fuseki"
+Repository = "https://github.com/Mat-O-Lab/ckanext-fuseki"
 
 [project.entry-points."ckan.plugins"]
 fuseki = "ckanext.fuseki.plugin:JenaPlugin"
@@ -74,7 +74,4 @@ statistics = true
 
 # Setuptools-scm configuration for dynamic versioning from git tags
 [tool.setuptools_scm]
-# Version is automatically derived from git tags
-# Use tags like 'v1.0.0', 'v1.1.0', etc.
-# Dev versions between tags will be like '1.0.0.dev5+g1234abc'
-fallback_version = "0.0.1.dev0"
+# Version automatically derived from git tags (e.g. v1.0.8 -> 1.0.8)
