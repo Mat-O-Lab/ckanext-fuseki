@@ -1,10 +1,14 @@
 [![Tests](https://github.com/Mat-O-Lab/ckanext-fuseki/actions/workflows/test.yml/badge.svg)](https://github.com/Mat-O-Lab/ckanext-fuseki/actions/workflows/test.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
 
 # ckanext-fuseki
 
-Extension creates a new tab in the dataset view that enables you to upload selected resources to a connected jena fuseki triple store. 
+A CKAN extension for semantic data management in research data portals.
+It automatically pushes RDF resources to an Apache Jena Fuseki triple store,
+provides a CKAN-authenticated SPARQL proxy that enforces dataset-level access control,
+and embeds a YASGUI query interface for interactive SPARQL exploration of linked data.
 
-![image](ckan-fuseki.png)
+![Fuseki tab in CKAN dataset view showing access information, SPARQL endpoint, authentication methods, named graphs, and per-resource upload toggles](ckan-fuseki.png)
 
 ## Requirements
 
@@ -24,31 +28,26 @@ See the [optional/README.md](optional/README.md) for standalone deployment instr
 
 **Optional**: A Sparklis web app for interactive SPARQL querying is also available in the optional folder.
 
-## Purpose
+## Features
 
-ckanext-fuseki is an extension for enabling the semantic aspect of CKAN with Apache Jena.
+- **Per-resource upload toggles** — selectively push RDF resources (Turtle, N-Triples, JSON-LD, etc.) to Fuseki
+- **Named graphs** — each resource is stored in its own named graph within a dedicated Fuseki dataset
+- **CKAN-authenticated SPARQL proxy** — enforces CKAN dataset-level access control on all SPARQL endpoints
+  - Public datasets: accessible to anyone via the CKAN proxy
+  - Private datasets: require CKAN authentication (browser session or API token)
+  - Direct Fuseki access: blocked for anonymous users, admin-only
+- **Query Dataset button** — embedded YASGUI interface for interactive SPARQL exploration
+- **Persistent & reasoning options** — configurable at dataset level
 
-This extension provides an ability to let users store a set of semantic resource (e.g. rdf, ttl, owl) in Apache Jena and perform SPARQL semantic queries.
+See [SECURITY.md](SECURITY.md) for the full security architecture.
 
-### Security Features
+## Compatibility
 
-The extension now includes **CKAN-authenticated access** to Fuseki SPARQL endpoints:
-- All dataset access is proxied through CKAN with permission checks
-- Public datasets: accessible to anyone via CKAN proxy
-- Private datasets: requires CKAN authentication (API token or session)
-- Direct Fuseki access: blocked for anonymous users, admin-only
-
-See [SECURITY.md](SECURITY.md) for detailed information about the security architecture and deployment.
-
-### Notes:
-
-Compatibility with core CKAN versions:
-
-| CKAN version    | Compatible?   |
-| --------------- | ------------- |
-| 2.9 and earlier  | not tested    |
-| 2.10             | yes    |
-| 2.11            | yes    |
+| CKAN version    | Compatible? |
+| --------------- | ----------- |
+| 2.9 and earlier | not tested  |
+| 2.10            | ✓ tested    |
+| 2.11            | ✓ tested    |
 
 
 ## Installation
@@ -144,7 +143,26 @@ CKANINI__CKANEXT__FUSEKI__SSL_VERIFY=${SSL_VERIFY}
 
 If `ckanext.fuseki.ckan_token` is not set, only public resources can be uploaded to the triple store.
 
-# Acknowledgements
+## Citation
+
+If you use this software, please cite it. GitHub shows a **"Cite this repository"** button (top right of the repo page) that exports the [CITATION.cff](CITATION.cff) in APA or BibTeX format.
+
+After the first Zenodo release, a DOI-specific BibTeX entry will be available on the Zenodo record. Until then:
+
+```bibtex
+@software{hanke_ckanext_fuseki,
+  author       = {Hanke, Thomas},
+  title        = {ckanext-fuseki},
+  url          = {https://github.com/Mat-O-Lab/ckanext-fuseki},
+  license      = {AGPL-3.0-or-later},
+}
+```
+
+## License
+
+[AGPL](https://www.gnu.org/licenses/agpl-3.0.en.html)
+
+## Acknowledgements
 
 This project's work is based on a fork of the repo [etri-odp/ckanext-jena](https://github.com/etri-odp/ckanext-jena), and we like to thank the authors of that project for sharing their work.
 It was supported by Institute for Information & communications Technology Promotion (IITP) grant funded by the Korea government (MSIT) (No.2017-00253, Development of an Advanced Open Data Distribution Platform based on International Standards)
