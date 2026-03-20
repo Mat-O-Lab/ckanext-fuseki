@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import os
 import time
 from enum import Enum
 from io import BytesIO
@@ -51,7 +50,7 @@ class Reasoners(str, Enum):
 
 log = logging.getLogger(__name__)
 CHUNK_SIZE = 16 * 1024  # 16kb
-SSL_VERIFY = asbool(os.environ.get("FUSEKI_SSL_VERIFY", True))
+SSL_VERIFY = asbool(config.get("ckanext.fuseki.ssl_verify", True))
 if not SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
 
@@ -330,13 +329,13 @@ def graph_create(
     file_data = assembly_graph.serialize(format="turtle")
     
     # DEBUG: Save individual dataset assembly to file for inspection
-    debug_file = os.path.join(os.path.dirname(__file__), f"assembly_debug_{graph_id}.ttl")
-    try:
-        with open(debug_file, 'w') as f:
-            f.write(file_data)
-        log.info(f"DEBUG: Saved dataset assembly to {debug_file}")
-    except Exception as e:
-        log.warning(f"Could not save debug file: {e}")
+    # debug_file = os.path.join(os.path.dirname(__file__), f"assembly_debug_{graph_id}.ttl")
+    # try:
+    #     with open(debug_file, 'w') as f:
+    #         f.write(file_data)
+    #     log.info(f"DEBUG: Saved dataset assembly to {debug_file}")
+    # except Exception as e:
+    #     log.warning(f"Could not save debug file: {e}")
     
     files = {"file": ("assembly.ttl", file_data, "text/turtle", {"Expires": "0"})}
 

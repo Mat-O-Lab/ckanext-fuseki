@@ -1,6 +1,5 @@
 import datetime
 import json
-import os
 from io import BytesIO
 from urllib.parse import urljoin, urlparse, urlsplit
 
@@ -22,9 +21,11 @@ import logging
 
 # log = __import__("logging").getLogger(__name__)
 
-CKAN_URL = os.environ.get("CKAN_SITE_URL", "http://localhost:5000")
-FUSEKI_CKAN_TOKEN = os.environ.get("FUSEKI_CKAN_TOKEN", "")
-SSL_VERIFY = asbool(os.environ.get("FUSEKI_SSL_VERIFY", True))
+from ckan.plugins import toolkit
+
+CKAN_URL = toolkit.config.get("ckan.site_url", "http://localhost:5000")
+FUSEKI_CKAN_TOKEN = toolkit.config.get("ckanext.fuseki.ckan_token", "")
+SSL_VERIFY = asbool(toolkit.config.get("ckanext.fuseki.ssl_verify", True))
 SPARQL_RES_NAME = "SPARQL"
 
 if not SSL_VERIFY:

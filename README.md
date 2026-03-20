@@ -65,27 +65,24 @@ pip install ckanext-fuseki
 pip install -e git+https://github.com/Mat-O-Lab/ckanext-fuseki.git#egg=ckanext-fuseki
 ```
 
-### 2. Deploy Fuseki with Security Configuration
+### 2. Deploy Fuseki
 
-This extension requires Fuseki with a custom entrypoint wrapper that blocks anonymous access.
-
-**Option A: Mount Entrypoint (Simpler - No Build Required)**
+Use `secoresearch/fuseki:4.9.0` with the provided configuration files mounted as volumes:
 
 ```yaml
 services:
   fuseki:
     image: secoresearch/fuseki:4.9.0
-    entrypoint: /custom-entrypoint.sh
     environment:
-      - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
       - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
       - ENABLE_DATA_WRITE=true
       - ENABLE_UPDATE=true
       - ENABLE_UPLOAD=true
       - QUERY_TIMEOUT=60000
     volumes:
-      - ./path/to/ckanext-fuseki/optional/fuseki/docker-entrypoint.sh:/custom-entrypoint.sh:ro
       - jena_data:/fuseki-base
+      - ./path/to/ckanext-fuseki/optional/fuseki/index.html:/jena-fuseki/webapp/index.html
+      - ./path/to/ckanext-fuseki/optional/fuseki/shiro.ini:/jena-fuseki/shiro.ini
     networks:
       - your_network
     healthcheck:
@@ -95,38 +92,12 @@ services:
       retries: 3
 ```
 
-**Option B: Build Custom Image (includes fixed index.html for subpaths)**
-
-```yaml
-services:
-  fuseki:
-    build:
-      context: path/to/ckanext-fuseki/optional/fuseki/
-    environment:
-      - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
-      - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
-      - ENABLE_DATA_WRITE=true
-      - ENABLE_UPDATE=true
-      - ENABLE_UPLOAD=true
-      - QUERY_TIMEOUT=60000
-    volumes:
-      - jena_data:/fuseki-base
-    networks:
-      - your_network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3030/$$/ping || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-```
+- **`index.html`** — fixes asset paths for subpath (nginx proxy) deployments
+- **`shiro.ini`** — configures HTTP Basic Auth; edit to set the admin password
 
 **Start Fuseki:**
 ```bash
-# Option A - no build needed
 docker-compose up -d fuseki
-
-# Option B - build first
-docker-compose build fuseki && docker-compose up -d fuseki
 ```
 
 ### 3. Configure CKAN
@@ -147,31 +118,38 @@ sudo service apache2 reload
 
 ## Config settings
 
-```bash
-FUSEKI_CKAN_TOKEN=${CKAN_API_TOKEN}
-CKANINI__CKANEXT__FUSEKI__URL = http://<fuseki_host>:<fuseki_port>/
-CKANINI__CKANEXT__FUSEKI__USERNAME = <admin_user>
-CKANINI__CKANEXT__FUSEKI__PASSWORD = *****
-```
-or ckan.ini parameters.
-```bash
-ckan.jena.fuseki.url = http://<fuseki_host>:<fuseki_port>/
-ckan.jena.fuseki.username = <admin_user>
-ckan.jena.fuseki.password = *****
-```
-If no Api Token is given, only public resources can be uploaded to the triple store!
+All configuration is read from `ckan.ini` (or the equivalent `CKANINI__` Docker environment variables):
 
-You can set the default formats to preselected for upload by setting the formats,
-```bash
-CKANINI__CKANEXT__FUSEKI__FORMATS = 'json turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json'
-```
-else it will react to the listed formats by default
+| ckan.ini key | Default | Description |
+|---|---|---|
+| `ckanext.fuseki.url` | `/fuseki` | Internal URL of the Fuseki service (e.g. `http://fuseki:3030/`) |
+| `ckanext.fuseki.username` | `admin` | Fuseki admin username — always `admin` (hardcoded by the Fuseki image) |
+| `ckanext.fuseki.password` | `admin` | Fuseki admin password — must match the `ADMIN_PASSWORD` env var set on the Fuseki container |
+| `ckanext.fuseki.ckan_token` | _(empty)_ | CKAN API token for background job callbacks; required to process private datasets |
+| `ckanext.fuseki.formats` | `turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld` | Space-separated list of resource formats that trigger upload to the triple store |
+| `ckanext.fuseki.ssl_verify` | `true` | Verify SSL certificates when connecting to Fuseki |
+| `ckanext.fuseki.sparklis_url` | _(empty)_ | If set, the query button redirects to this Sparklis instance instead of the built-in SPARQL UI |
+| `ckanext.fuseki.internal_url` | _(empty)_ | Internal network URL used by the CKAN proxy to reach Fuseki directly (useful when the public URL goes through nginx) |
 
-if a sparklis web app is available, you can set
-```bash
-CKANINI__CKANEXT__FUSEKI__SPARKLIS__URL = http://<sparklis_host>:<sparklis_port>/
+Example `ckan.ini` snippet:
+
+```ini
+ckanext.fuseki.url = http://fuseki:3030/
+ckanext.fuseki.username = admin
+ckanext.fuseki.password = <your-fuseki-password>
+ckanext.fuseki.ckan_token = <your-ckan-api-token>
 ```
-the query button will redirect to sparklis instead.
+
+Equivalent Docker environment variables (set in `.env` or `compose.yaml`):
+
+```bash
+CKANINI__CKANEXT__FUSEKI__URL=http://fuseki:3030/
+CKANINI__CKANEXT__FUSEKI__USERNAME=admin
+CKANINI__CKANEXT__FUSEKI__PASSWORD=<your-fuseki-password>
+CKANINI__CKANEXT__FUSEKI__CKAN_TOKEN=<your-ckan-api-token>
+```
+
+If `ckanext.fuseki.ckan_token` is not set, only public resources can be uploaded to the triple store.
 
 # Acknowledgements
 

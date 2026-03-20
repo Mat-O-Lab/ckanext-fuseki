@@ -39,10 +39,14 @@ class JenaPlugin(p.SingletonPlugin):
         declaration.declare(group.url, "/fuseki")
         declaration.declare(group.username, "admin")
         declaration.declare(group.password, "admin")
+        declaration.declare(group.ckan_token, "")
         declaration.declare(
             group.formats,
             "turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld",
         )
+        declaration.declare(group.ssl_verify, True)
+        declaration.declare(group.sparklis_url, "")
+        declaration.declare(group.internal_url, "")
 
     # IActions
 
