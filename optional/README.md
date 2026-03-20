@@ -74,16 +74,12 @@ ckanext.fuseki.password = admin
 ckanext.fuseki.ckan_token = <your-ckan-api-token>
 ```
 
+`ckanext.fuseki.url` must always be the **direct container URL** (`http://fuseki:3030/`), not the public nginx URL. All Fuseki API calls and SPARQL proxying use this address.
+
 For SPARQL queries via Sparklis, also set:
 
 ```ini
 ckanext.fuseki.sparklis_url = http://localhost:8080/
-```
-
-If CKAN accesses Fuseki through a different internal address than the public URL (e.g. behind nginx), set:
-
-```ini
-ckanext.fuseki.internal_url = http://fuseki:3030
 ```
 
 ## Troubleshooting

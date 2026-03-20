@@ -2,7 +2,7 @@ import ckan.lib.base as base
 import ckan.lib.helpers as core_helpers
 import ckan.plugins.toolkit as toolkit
 from ckan.common import _, config
-from flask import Blueprint, redirect, request, Response, make_response
+from flask import Blueprint, request, Response, make_response
 from flask.views import MethodView
 import requests
 
@@ -10,6 +10,19 @@ from ckanext.fuseki.backend import Reasoners, SSL_VERIFY
 from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 
 log = __import__("logging").getLogger(__name__)
+
+_WRITE_PATHS = {"update", "upload"}
+_WRITE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
+
+
+def _requires_write(service_path: str, http_method: str) -> bool:
+    """Return True if this proxy request requires package_update permission."""
+    path = service_path.strip("/")
+    if path in _WRITE_PATHS:
+        return True
+    if path == "data" and http_method.upper() in _WRITE_METHODS:
+        return True
+    return False
 
 
 blueprint = Blueprint("fuseki", __name__)
@@ -119,7 +132,6 @@ class StatusView(MethodView):
 
 
 def query_view(id: str):
-    pkg_dict = {}
     try:
         pkg_dict = toolkit.get_action("package_show")({}, {"id": id})
     except toolkit.ObjectNotFound:
@@ -127,7 +139,10 @@ def query_view(id: str):
     except toolkit.NotAuthorized:
         base.abort(403, _("Not authorized to see this page"))
 
-    return redirect(fuseki_query_url(pkg_dict), code=302)
+    return base.render(
+        "fuseki/query.html",
+        extra_vars={"pkg_dict": pkg_dict},
+    )
 
 
 blueprint.add_url_rule(
@@ -188,34 +203,33 @@ def fuseki_proxy(id: str, service_path: str = ''):
     except Exception as e:
         log.error(f"Error fetching package {id}: {e}")
         toolkit.abort(500, _('Internal server error'))
-    
+
+    # Write operations require package_update permission
+    if _requires_write(service_path, request.method):
+        try:
+            toolkit.check_access(
+                'package_update',
+                {'user': toolkit.c.user or toolkit.c.author},
+                {'id': dataset_uuid},
+            )
+        except toolkit.NotAuthorized:
+            toolkit.abort(403, _('Not authorized to modify this dataset'))
+
     # Get Fuseki configuration
-    # Use internal docker network address for proxy, not external nginx URL
-    # External URL (ckanext.fuseki.url) may loop back through nginx
-    fuseki_internal_url = config.get('ckanext.fuseki.internal_url', '')
-    if not fuseki_internal_url:
-        # Fallback: try to derive from ckanext.fuseki.url or use default
-        fuseki_external_url = config.get('ckanext.fuseki.url', '').rstrip('/')
-        # If external URL contains /fuseki/, it's going through nginx - use internal address
-        if '/fuseki/' in fuseki_external_url or '/fuseki' in fuseki_external_url:
-            fuseki_internal_url = 'http://fuseki:3030'
-            log.warning(f"Using internal Fuseki URL {fuseki_internal_url} instead of external {fuseki_external_url} to avoid nginx loop")
-        else:
-            fuseki_internal_url = fuseki_external_url
-    
+    fuseki_url = config.get('ckanext.fuseki.url', '').rstrip('/')
     username = config.get('ckanext.fuseki.username', 'admin')
     password = config.get('ckanext.fuseki.password', 'admin')
-    
-    if not fuseki_internal_url:
+
+    if not fuseki_url:
         toolkit.abort(500, _('Fuseki URL not configured'))
     
     # Build target URL - forward to Fuseki dataset endpoint using UUID
     # Fuseki datasets are created with UUID, not name
     if service_path:
-        target_url = f"{fuseki_internal_url}/{dataset_uuid}/{service_path}"
+        target_url = f"{fuseki_url}/{dataset_uuid}/{service_path}"
     else:
         # Root path - ensure trailing slash for Fuseki's root page
-        target_url = f"{fuseki_internal_url}/{dataset_uuid}/"
+        target_url = f"{fuseki_url}/{dataset_uuid}/"
     
     if request.query_string:
         target_url += f"?{request.query_string.decode('utf-8')}"

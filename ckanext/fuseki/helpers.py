@@ -13,19 +13,18 @@ def common_member(a, b):
 
 
 def fuseki_service_available():
-    url = config.get("ckanext.fuseki.url", "")
-    if not url:
-        return False  # If fuseki.url is not set, return False
+    # Prefer internal_url (direct container address) over the public-facing url
+    # to avoid routing through nginx from inside CKAN.
+    base = config.get("ckanext.fuseki.internal_url", "") or config.get("ckanext.fuseki.url", "")
+    if not base:
+        return False
     ssl_verify = config.get("ckanext.fuseki.ssl_verify", True)
+    # /$/ping is explicitly anon in shiro.ini and is the canonical health endpoint
+    ping_url = base.rstrip("/") + "/$/ping"
     try:
-        # Perform a HEAD request (lightweight check) to see if the service responds
-        response = requests.head(url, timeout=5, verify=ssl_verify)
-        if (200 <= response.status_code < 400) or response.status_code == 405:
-            return True  # URL is reachable and returns a valid status code
-        else:
-            return False  # URL is reachable but response status is not valid
+        response = requests.get(ping_url, timeout=5, verify=ssl_verify)
+        return response.status_code == 200
     except requests.RequestException:
-        # If there's any issue (timeout, connection error, etc.)
         return False
 
 
@@ -48,12 +47,8 @@ def fuseki_query_url(pkg_dict):
 
     sparklis_url = config.get("ckanext.fuseki.sparklis_url", "")
     if not sparklis_url:
-        # Use CKAN proxy URL for Fuseki query interface
-        # Pattern: /dataset/{id}/fuseki/$/query
-        url = toolkit.url_for('fuseki.fuseki_proxy',
-                              id=pkg_dict['id'],
-                              service_path='query',
-                              qualified=True)
+        # Use the built-in YASGUI query page
+        url = toolkit.url_for('fuseki.query', id=pkg_dict['id'], qualified=True)
     else:
         # Sparklis interface - use CKAN proxy SPARQL endpoint
         sparql_endpoint = toolkit.url_for('fuseki.fuseki_proxy',

@@ -1,0 +1,49 @@
+{% extends "package/read_base.html" %}
+
+{% block primary_content_inner %}
+{% set sparql_endpoint = h.fuseki_sparql_url(pkg_dict) %}
+
+<h2 class="hide-heading">{{ _('SPARQL Query') }}</h2>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@triply/yasgui/build/yasgui.min.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<style>
+  #yasgui {
+    min-height: 600px;
+  }
+  /* prevent CKAN's body overflow rules from clipping the YASGUI results table */
+  .module-content {
+    overflow: visible;
+  }
+</style>
+
+<div id="yasgui"></div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/@triply/yasgui/build/yasgui.min.js"></script>
+<script>
+  (function () {
+    var endpoint = {{ h.fuseki_sparql_url(pkg_dict) | tojson }};
+    var storageKey = "ckanext-fuseki-" + {{ pkg_dict.id | tojson }};
+
+    var yasgui = new Yasgui(document.getElementById("yasgui"), {
+      requestConfig: { endpoint: endpoint },
+      copyEndpointOnNewTab: true,
+      storageNamespace: storageKey
+    });
+
+    // Always point the active tab at the correct endpoint in case localStorage
+    // has a stale value from a previous session.
+    var tab = yasgui.getTab();
+    if (tab) {
+      tab.setRequestConfig({ endpoint: endpoint });
+    }
+  })();
+</script>
+{% endblock %}

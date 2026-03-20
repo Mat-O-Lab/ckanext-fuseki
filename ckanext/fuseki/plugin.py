@@ -36,7 +36,7 @@ class JenaPlugin(p.SingletonPlugin):
     def declare_config_options(self, declaration: Declaration, key: Key):
         declaration.annotate("Fuseki")
         group = key.ckanext.fuseki
-        declaration.declare(group.url, "/fuseki")
+        declaration.declare(group.url, "http://fuseki:3030/")
         declaration.declare(group.username, "admin")
         declaration.declare(group.password, "admin")
         declaration.declare(group.ckan_token, "")
@@ -46,7 +46,6 @@ class JenaPlugin(p.SingletonPlugin):
         )
         declaration.declare(group.ssl_verify, True)
         declaration.declare(group.sparklis_url, "")
-        declaration.declare(group.internal_url, "")
 
     # IActions
 

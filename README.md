@@ -122,32 +122,25 @@ All configuration is read from `ckan.ini` (or the equivalent `CKANINI__` Docker 
 
 | ckan.ini key | Default | Description |
 |---|---|---|
-| `ckanext.fuseki.url` | `/fuseki` | Internal URL of the Fuseki service (e.g. `http://fuseki:3030/`) |
+| `ckanext.fuseki.url` | `http://fuseki:3030/` | Direct internal URL of the Fuseki container — **must not** go through nginx |
 | `ckanext.fuseki.username` | `admin` | Fuseki admin username — always `admin` (hardcoded by the Fuseki image) |
 | `ckanext.fuseki.password` | `admin` | Fuseki admin password — must match the `ADMIN_PASSWORD` env var set on the Fuseki container |
 | `ckanext.fuseki.ckan_token` | _(empty)_ | CKAN API token for background job callbacks; required to process private datasets |
 | `ckanext.fuseki.formats` | `turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld` | Space-separated list of resource formats that trigger upload to the triple store |
-| `ckanext.fuseki.ssl_verify` | `true` | Verify SSL certificates when connecting to Fuseki |
+| `ckanext.fuseki.ssl_verify` | `true` | Verify SSL certificates when connecting to external resource URLs |
 | `ckanext.fuseki.sparklis_url` | _(empty)_ | If set, the query button redirects to this Sparklis instance instead of the built-in SPARQL UI |
-| `ckanext.fuseki.internal_url` | _(empty)_ | Internal network URL used by the CKAN proxy to reach Fuseki directly (useful when the public URL goes through nginx) |
 
-Example `ckan.ini` snippet:
-
-```ini
-ckanext.fuseki.url = http://fuseki:3030/
-ckanext.fuseki.username = admin
-ckanext.fuseki.password = <your-fuseki-password>
-ckanext.fuseki.ckan_token = <your-ckan-api-token>
-```
-
-Equivalent Docker environment variables (set in `.env` or `compose.yaml`):
+Example Docker environment variables (set in `.env`):
 
 ```bash
-CKANINI__CKANEXT__FUSEKI__URL=http://fuseki:3030/
+CKANINI__CKANEXT__FUSEKI__URL=http://fuseki:${FUSEKI_PORT}/
 CKANINI__CKANEXT__FUSEKI__USERNAME=admin
 CKANINI__CKANEXT__FUSEKI__PASSWORD=<your-fuseki-password>
 CKANINI__CKANEXT__FUSEKI__CKAN_TOKEN=<your-ckan-api-token>
+CKANINI__CKANEXT__FUSEKI__SSL_VERIFY=${SSL_VERIFY}
 ```
+
+`ckanext.fuseki.url` must be the **container-internal** address (e.g. `http://fuseki:3030/`), not the public nginx URL. CKAN uses this URL for all direct Fuseki API calls and the SPARQL proxy.
 
 If `ckanext.fuseki.ckan_token` is not set, only public resources can be uploaded to the triple store.
 
