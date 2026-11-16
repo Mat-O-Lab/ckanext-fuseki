@@ -240,7 +240,6 @@ class StoringHandler(logging.Handler):
         self.input = input
 
     def emit(self, record):
-        conn = db.ENGINE.connect()
         try:
             # Turn strings into unicode to stop SQLAlchemy
             # "Unicode type received non-unicode bind param value" warnings.
@@ -249,21 +248,21 @@ class StoringHandler(logging.Handler):
             module = str(record.module)
             funcName = str(record.funcName)
 
-            conn.execute(
-                db.LOGS_TABLE.insert().values(
-                    job_id=self.task_id,
-                    timestamp=datetime.datetime.utcnow(),
-                    message=message,
-                    level=level,
-                    module=module,
-                    funcName=funcName,
-                    lineno=record.lineno,
+            # begin() commits on success; SQLAlchemy 2 no longer autocommits.
+            with db.ENGINE.begin() as conn:
+                conn.execute(
+                    db.LOGS_TABLE.insert().values(
+                        job_id=self.task_id,
+                        timestamp=datetime.datetime.utcnow(),
+                        message=message,
+                        level=level,
+                        module=module,
+                        funcName=funcName,
+                        lineno=record.lineno,
+                    )
                 )
-            )
-        except:
+        except Exception:
             pass
-        finally:
-            conn.close()
 
 
 class DatetimeJsonEncoder(json.JSONEncoder):
