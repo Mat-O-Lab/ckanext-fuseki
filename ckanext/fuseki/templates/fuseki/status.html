@@ -1,6 +1,11 @@
 {% extends "package/read_base.html" %}
 {% import 'macros/form.html' as form %}
 
+{% block styles %}
+{{ super() }}
+{% asset 'fuseki/style' %}
+{% endblock %}
+
 {% block primary_content_inner %}
 <h2 class="hide-heading">{{ _('Fuseki') }}</h2>
 <div id="ajax-status" data-module="fuseki">
