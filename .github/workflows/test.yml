@@ -14,11 +14,28 @@ jobs:
       - name: Check syntax
         run: flake8 . --count --select=E901,E999,F821,F822,F823 --show-source --statistics --exclude ckan
 
+  audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit runtime requirements for known vulnerabilities
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
   test:
     needs: lint
     strategy:
       matrix:
         include:
+          - ckan-version: "2.12"
+            ckan-image: "ckan/ckan-dev:2.12"
+            solr-image: "2.12-solr9-spatial"
+            harvester-version: 'master'
           - ckan-version: "2.11"
             ckan-image: "ckan/ckan-dev:2.11-py3.10"
             solr-image: "2.11-solr9-spatial"
@@ -72,7 +89,7 @@ jobs:
       run: |
         ckan -c test.ini db init
     - name: Run tests
-      run: pytest --ckan-ini=test.ini --cov=ckanext.fuseki --disable-warnings ckanext/fuseki || ([ $? = 5 ] && exit 0 || exit $?)
+      run: pytest --ckan-ini=test.ini --cov=ckanext.fuseki --cov-report=xml --disable-warnings ckanext/fuseki
     - name: Upload coverage report to codecov
       uses: codecov/codecov-action@v1
       with:

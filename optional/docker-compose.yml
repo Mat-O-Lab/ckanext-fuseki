@@ -6,12 +6,13 @@ volumes:
 
 services:
   fuseki:
-    image: secoresearch/fuseki:4.9.0
+    # Builds secoresearch/fuseki:6.2.0 plus the shiro.ini that blocks anonymous access
+    build: ./fuseki
     restart: on-failure
     ports:
       - "3030:3030"
     environment:
-      - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+      - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
       - ADMIN_PASSWORD=admin
       - ENABLE_DATA_WRITE=true
       - ENABLE_UPDATE=true
@@ -19,8 +20,6 @@ services:
       - QUERY_TIMEOUT=60000
     volumes:
       - jena_data:/fuseki-base
-      - ./fuseki/index.html:/jena-fuseki/webapp/index.html
-      - ./fuseki/shiro.ini:/jena-fuseki/shiro.ini
     stop_grace_period: 10s
     healthcheck:
       test:

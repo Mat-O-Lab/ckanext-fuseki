@@ -337,11 +337,14 @@ def graph_create(
     # except Exception as e:
     #     log.warning(f"Could not save debug file: {e}")
     
-    files = {"file": ("assembly.ttl", file_data, "text/turtle", {"Expires": "0"})}
-
+    # Post the assembly as the raw request body. Fuseki >= 5.5 rejects the
+    # multipart form upload ("Service configuration from a multipart upload not
+    # supported"); the raw-body form is only accepted when Fuseki runs with
+    # -Dfuseki:allowAddByConfigFile=true (see README, "Fuseki 5.5 and later").
     response = requests.post(
         jena_dataset_create_url,
-        files=files,
+        data=file_data.encode("utf-8"),
+        headers={"Content-Type": "text/turtle"},
         auth=(jena_username, jena_password),
         verify=False,
     )

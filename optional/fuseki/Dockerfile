@@ -1,13 +1,12 @@
-FROM secoresearch/fuseki:4.9.0
+FROM secoresearch/fuseki:6.2.0
 
-# Copy our custom entrypoint that handles volume mount initialization
-# Need to switch to root temporarily to set permissions
+# Entrypoint wrapper and the Shiro configuration that blocks anonymous access.
+# The wrapper copies /fuseki-init/shiro.ini to /fuseki-base/shiro.ini on every
+# start (the base image only does that on the first start of a volume).
 USER root
 COPY docker-entrypoint.sh /custom-entrypoint.sh
-RUN chmod +x /custom-entrypoint.sh
-
-# Copy custom index.html with corrected paths for subpath deployment
-COPY index.html /jena-fuseki/webapp/index.html
+COPY shiro.ini /fuseki-init/shiro.ini
+RUN chmod +x /custom-entrypoint.sh && chmod 644 /fuseki-init/shiro.ini
 
 # Switch back to the fuseki user (UID 1000)
 USER 1000

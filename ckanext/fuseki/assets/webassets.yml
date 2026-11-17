@@ -2,3 +2,8 @@ fuseki:
   output: fuseki/fuseki.js
   contents:
     - fuseki.js
+
+style:
+  output: fuseki/fuseki.css
+  contents:
+    - style.css

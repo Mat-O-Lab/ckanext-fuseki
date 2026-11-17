@@ -363,6 +363,14 @@ def fuseki_hook(context: Context, data_dict: dict[str, Any]):
             job_id = json.loads(task["value"])["job_id"]
             db.mark_job_as_completed(job_id)
 
+    if status == "error":
+        log.debug("job failed, now update job db at: {}".format(task))
+        db.init()
+        job_id = json.loads(task["value"])["job_id"]
+        db.mark_job_as_errored(
+            job_id, data_dict.get("error") or {"message": "unknown error"}
+        )
+
     context["ignore_auth"] = True
     toolkit.get_action("task_status_update")(context, task)
 

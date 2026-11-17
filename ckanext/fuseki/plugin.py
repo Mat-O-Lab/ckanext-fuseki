@@ -49,6 +49,7 @@ class JenaPlugin(p.SingletonPlugin):
         )
         declaration.declare(group.ssl_verify, True)
         declaration.declare(group.sparklis_url, "")
+        declaration.declare(group.db_url, p.toolkit.config.get("sqlalchemy.url"))
 
     # IActions
 

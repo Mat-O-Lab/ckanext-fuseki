@@ -7,10 +7,12 @@ Loosely based on ckan-service-provider's db.py
 
 import datetime
 import json
+import logging
 import os
 
 import six
 import sqlalchemy
+from ckan.plugins import toolkit
 
 ENGINE = None
 _METADATA = None
@@ -18,10 +20,10 @@ JOBS_TABLE = None
 METADATA_TABLE = None
 LOGS_TABLE = None
 
-DB_URL = os.environ.get("FUSEKI_SQLALCHEMY_URL", "sqlite:////tmp/jobs.db")
+log = logging.getLogger(__name__)
 
 
-def init(db_uri=DB_URL, echo=False):
+def init(db_uri: str = "", echo=False):
     """Initialise the database.
 
     Initialise the sqlalchemy engine, metadata and table objects that we use to
@@ -30,8 +32,10 @@ def init(db_uri=DB_URL, echo=False):
     Create the database and the database tables themselves if they don't
     already exist.
 
-    :param uri: the sqlalchemy database URI
-    :type uri: string
+    :param db_uri: the sqlalchemy database URI. Defaults to the CKAN config
+        option ``ckanext.fuseki.db_url`` (which itself defaults to CKAN's
+        ``sqlalchemy.url``).
+    :type db_uri: string
 
     :param echo: whether or not to have the sqlalchemy engine log all
         statements to stdout
@@ -39,8 +43,16 @@ def init(db_uri=DB_URL, echo=False):
 
     """
     global ENGINE, _METADATA, JOBS_TABLE, METADATA_TABLE, LOGS_TABLE
-    ENGINE = sqlalchemy.create_engine(db_uri, echo=echo, convert_unicode=True)
-    _METADATA = sqlalchemy.MetaData(ENGINE)
+    if not db_uri:
+        db_uri = toolkit.config.get("ckanext.fuseki.db_url")
+        if os.environ.get("FUSEKI_SQLALCHEMY_URL"):
+            log.warning(
+                "FUSEKI_SQLALCHEMY_URL is no longer used; set the CKAN config "
+                "option ckanext.fuseki.db_url (CKANINI__CKANEXT__FUSEKI__DB_URL) "
+                "or leave it unset to use CKAN's sqlalchemy.url."
+            )
+    ENGINE = sqlalchemy.create_engine(db_uri, echo=echo)
+    _METADATA = sqlalchemy.MetaData()
     JOBS_TABLE = _init_jobs_table()
     METADATA_TABLE = _init_metadata_table()
     LOGS_TABLE = _init_logs_table()
@@ -106,17 +118,18 @@ def get_job(job_id):
     if job_id:
         job_id = six.text_type(job_id)
 
-    result = ENGINE.execute(
-        JOBS_TABLE.select().where(JOBS_TABLE.c.job_id == job_id)
-    ).first()
+    with ENGINE.connect() as conn:
+        result = conn.execute(
+            JOBS_TABLE.select().where(JOBS_TABLE.c.job_id == job_id)
+        ).first()
 
     if not result:
         return None
 
     # Turn the result into a dictionary representation of the job.
     result_dict = {}
-    for field in list(result.keys()):
-        value = getattr(result, field)
+    for field in list(result._mapping.keys()):
+        value = result._mapping[field]
         if value is None:
             result_dict[field] = value
         elif field in ("sent_data", "data", "error"):
@@ -294,9 +307,10 @@ def _update_job(job_id, job_dict):
     if "data" in job_dict:
         job_dict["data"] = six.text_type(job_dict["data"])
 
-    ENGINE.execute(
-        JOBS_TABLE.update().where(JOBS_TABLE.c.job_id == job_id).values(**job_dict)
-    )
+    with ENGINE.begin() as conn:
+        conn.execute(
+            JOBS_TABLE.update().where(JOBS_TABLE.c.job_id == job_id).values(**job_dict)
+        )
 
 
 def mark_job_as_completed(job_id, data=None):
@@ -432,11 +446,13 @@ def _get_metadata(job_id):
     # warnings.
     job_id = six.text_type(job_id)
 
-    results = ENGINE.execute(
-        METADATA_TABLE.select().where(METADATA_TABLE.c.job_id == job_id)
-    ).fetchall()
+    with ENGINE.connect() as conn:
+        results = conn.execute(
+            METADATA_TABLE.select().where(METADATA_TABLE.c.job_id == job_id)
+        ).fetchall()
     metadata = {}
     for row in results:
+        row = row._mapping
         value = row["value"]
         if row["type"] == "json":
             value = json.loads(value)
@@ -450,11 +466,12 @@ def _get_logs(job_id):
     # warnings.
     job_id = six.text_type(job_id)
 
-    results = ENGINE.execute(
-        LOGS_TABLE.select().where(LOGS_TABLE.c.job_id == job_id)
-    ).fetchall()
+    with ENGINE.connect() as conn:
+        results = conn.execute(
+            LOGS_TABLE.select().where(LOGS_TABLE.c.job_id == job_id)
+        ).fetchall()
 
-    results = [dict(result) for result in results]
+    results = [dict(result._mapping) for result in results]
 
     for result in results:
         result.pop("job_id")
