@@ -76,105 +76,117 @@ def update(
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
 
-    callback_fuseki_hook(callback_url, api_key=FUSEKI_CKAN_TOKEN, job_dict=job_dict)
-    _graph = backend.get_graph(dataset_id)
-    logger.debug("{} {}".format(dataset_id, res_ids))
-    
-    # Always recreate datasets to ensure configuration changes (reasoning, etc.) are applied
-    if _graph:
-        logger.info("Found existing graph, recreating to apply configuration changes")
-        
-        try:
-            backend.graph_delete(dataset_id)
-            logger.info(f"Deleted existing dataset {dataset_id}")
-        except Exception as e:
-            logger.warning(f"Could not delete existing dataset: {e}")
-        
-        # This prevents data accumulation from incomplete cleanup
-        logger.info(f"Verifying dataset {dataset_id} is completely deleted...")
-        if not backend.verify_dataset_deleted(dataset_id):
-            logger.error(f"Dataset {dataset_id} still exists after deletion, recreation may fail!")
-        else:
-            logger.info(f"Dataset {dataset_id} confirmed deleted, safe to recreate")
-    
-    # Step 3: Get resources first (needed for assembly creation)
-    resources = []
-    for res_id in res_ids:
-        try:
-            _res = get_action("resource_show")(context, {"id": res_id})
-            resources.append(_res)
-        except Exception as e:
-            logger.warning(f"Could not fetch resource {res_id}: {e}")
-    
-    # Step 4: Create dataset with current configuration and resources
-    _graph = backend.graph_create(
-        dataset_url, dataset_id, persistant, reasoning, reasoner, resources=resources
-    )
-    logger.info("Created graph with configuration: persistent={}, reasoning={}, reasoner={}, resources={}".format(
-        persistant, reasoning, reasoner, len(resources)
-    ))
-    
-    logger.debug("Uploading {} resources to graph in store at {}".format(len(resources), _graph))
-    
-    # Build list of graph URIs that should exist after upload
-    expected_graph_uris = []
-    for _res in resources:
-        if reasoning:
-            # With reasoning, we have BOTH raw and inference graphs
-            # Raw graph: stores the actual data
-            raw_graph_uri = _res['url']
-            # Inference graph: provides inferred triples
-            inf_graph_uri = f"urn:x-arq:InferenceGraph:{_res['url']}"
-            expected_graph_uris.append(raw_graph_uri)
-            expected_graph_uris.append(inf_graph_uri)
-        else:
-            # Without reasoning, only the raw graph exists
-            graph_uri = _res['url']
-            expected_graph_uris.append(graph_uri)
-    
-    # Upload each resource (PUT replaces graph content)
-    for _res in resources:
-        try:
-            backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN, reasoning=reasoning)
-        except Exception as e:
-            logger.error(
-                "Upload {} to graph in store failed: {}".format(_res.get("url", "unknown"), e)
-            )
-        else:
-            logger.info("Upload {} to graph {} successful".format(_res.get("url", "unknown"), _graph))
-    
-    # Step 4.5: Clean up orphaned graphs (resources removed from dataset)
-    logger.info("Cleaning up orphaned graphs...")
     try:
-        backend.graph_clear_specific(dataset_id, expected_graph_uris)
-        logger.info("Orphaned graph cleanup complete")
-    except Exception as e:
-        logger.warning(f"Could not clean up orphaned graphs: {e}")
+        callback_fuseki_hook(callback_url, api_key=FUSEKI_CKAN_TOKEN, job_dict=job_dict)
+        _graph = backend.get_graph(dataset_id)
+        logger.debug("{} {}".format(dataset_id, res_ids))
     
-    # create a link to the sparql endpoint
-    link = resource_search(dataset_id, SPARQL_RES_NAME)
-    if link:
-        link_id = link["id"]
-    else:
-        link_id = None
-    pkg_dict = get_action("package_show")(context, {"id": dataset_id})
-    sparql_link = upload_link(
-        dataset_id,
-        res_id=link_id,
-        mime_type="application/sparql-results+xml",
-        format="SPARQL",
-        authorization=FUSEKI_CKAN_TOKEN,
-        link_url=helpers.fuseki_sparql_url(pkg_dict),
-    )
-    logger.info("SPARQL link added to dataset: {}".format(sparql_link))
-    logger.info("job completed results at {}".format(_graph))
-    # all is done update job status
-    job_dict["status"] = "complete"
-    callback_fuseki_hook(
-        callback_url,
-        api_key=FUSEKI_CKAN_TOKEN,
-        job_dict=job_dict,
-    )
+        # Always recreate datasets to ensure configuration changes (reasoning, etc.) are applied
+        if _graph:
+            logger.info("Found existing graph, recreating to apply configuration changes")
+        
+            try:
+                backend.graph_delete(dataset_id)
+                logger.info(f"Deleted existing dataset {dataset_id}")
+            except Exception as e:
+                logger.warning(f"Could not delete existing dataset: {e}")
+        
+            # This prevents data accumulation from incomplete cleanup
+            logger.info(f"Verifying dataset {dataset_id} is completely deleted...")
+            if not backend.verify_dataset_deleted(dataset_id):
+                logger.error(f"Dataset {dataset_id} still exists after deletion, recreation may fail!")
+            else:
+                logger.info(f"Dataset {dataset_id} confirmed deleted, safe to recreate")
+    
+        # Step 3: Get resources first (needed for assembly creation)
+        resources = []
+        for res_id in res_ids:
+            try:
+                _res = get_action("resource_show")(context, {"id": res_id})
+                resources.append(_res)
+            except Exception as e:
+                logger.warning(f"Could not fetch resource {res_id}: {e}")
+    
+        # Step 4: Create dataset with current configuration and resources
+        _graph = backend.graph_create(
+            dataset_url, dataset_id, persistant, reasoning, reasoner, resources=resources
+        )
+        logger.info("Created graph with configuration: persistent={}, reasoning={}, reasoner={}, resources={}".format(
+            persistant, reasoning, reasoner, len(resources)
+        ))
+    
+        logger.debug("Uploading {} resources to graph in store at {}".format(len(resources), _graph))
+    
+        # Build list of graph URIs that should exist after upload
+        expected_graph_uris = []
+        for _res in resources:
+            if reasoning:
+                # With reasoning, we have BOTH raw and inference graphs
+                # Raw graph: stores the actual data
+                raw_graph_uri = _res['url']
+                # Inference graph: provides inferred triples
+                inf_graph_uri = f"urn:x-arq:InferenceGraph:{_res['url']}"
+                expected_graph_uris.append(raw_graph_uri)
+                expected_graph_uris.append(inf_graph_uri)
+            else:
+                # Without reasoning, only the raw graph exists
+                graph_uri = _res['url']
+                expected_graph_uris.append(graph_uri)
+    
+        # Upload each resource (PUT replaces graph content)
+        for _res in resources:
+            try:
+                backend.resource_upload(_res, _graph, api_key=FUSEKI_CKAN_TOKEN, reasoning=reasoning)
+            except Exception as e:
+                logger.error(
+                    "Upload {} to graph in store failed: {}".format(_res.get("url", "unknown"), e)
+                )
+            else:
+                logger.info("Upload {} to graph {} successful".format(_res.get("url", "unknown"), _graph))
+    
+        # Step 4.5: Clean up orphaned graphs (resources removed from dataset)
+        logger.info("Cleaning up orphaned graphs...")
+        try:
+            backend.graph_clear_specific(dataset_id, expected_graph_uris)
+            logger.info("Orphaned graph cleanup complete")
+        except Exception as e:
+            logger.warning(f"Could not clean up orphaned graphs: {e}")
+    
+        # create a link to the sparql endpoint
+        link = resource_search(dataset_id, SPARQL_RES_NAME)
+        if link:
+            link_id = link["id"]
+        else:
+            link_id = None
+        pkg_dict = get_action("package_show")(context, {"id": dataset_id})
+        sparql_link = upload_link(
+            dataset_id,
+            res_id=link_id,
+            mime_type="application/sparql-results+xml",
+            format="SPARQL",
+            authorization=FUSEKI_CKAN_TOKEN,
+            link_url=helpers.fuseki_sparql_url(pkg_dict),
+        )
+        logger.info("SPARQL link added to dataset: {}".format(sparql_link))
+        logger.info("job completed results at {}".format(_graph))
+        # all is done update job status
+        job_dict["status"] = "complete"
+        callback_fuseki_hook(
+            callback_url,
+            api_key=FUSEKI_CKAN_TOKEN,
+            job_dict=job_dict,
+        )
+    except Exception as e:
+        # Without this the exception only reached rq, the job stayed "pending"
+        # in the status view and showed just its first log line.
+        message = "{}: {}".format(type(e).__name__, e)
+        logger.error("Job failed: {}".format(message))
+        job_dict["status"] = "error"
+        job_dict["error"] = {"message": message}
+        callback_fuseki_hook(
+            callback_url, api_key=FUSEKI_CKAN_TOKEN, job_dict=job_dict
+        )
+        raise
     return "error" if errored else None
 
 

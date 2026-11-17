@@ -7,10 +7,12 @@ Loosely based on ckan-service-provider's db.py
 
 import datetime
 import json
+import logging
 import os
 
 import six
 import sqlalchemy
+from ckan.plugins import toolkit
 
 ENGINE = None
 _METADATA = None
@@ -18,10 +20,10 @@ JOBS_TABLE = None
 METADATA_TABLE = None
 LOGS_TABLE = None
 
-DB_URL = os.environ.get("FUSEKI_SQLALCHEMY_URL", "sqlite:////tmp/jobs.db")
+log = logging.getLogger(__name__)
 
 
-def init(db_uri=DB_URL, echo=False):
+def init(db_uri: str = "", echo=False):
     """Initialise the database.
 
     Initialise the sqlalchemy engine, metadata and table objects that we use to
@@ -30,8 +32,10 @@ def init(db_uri=DB_URL, echo=False):
     Create the database and the database tables themselves if they don't
     already exist.
 
-    :param uri: the sqlalchemy database URI
-    :type uri: string
+    :param db_uri: the sqlalchemy database URI. Defaults to the CKAN config
+        option ``ckanext.fuseki.db_url`` (which itself defaults to CKAN's
+        ``sqlalchemy.url``).
+    :type db_uri: string
 
     :param echo: whether or not to have the sqlalchemy engine log all
         statements to stdout
@@ -39,6 +43,14 @@ def init(db_uri=DB_URL, echo=False):
 
     """
     global ENGINE, _METADATA, JOBS_TABLE, METADATA_TABLE, LOGS_TABLE
+    if not db_uri:
+        db_uri = toolkit.config.get("ckanext.fuseki.db_url")
+        if os.environ.get("FUSEKI_SQLALCHEMY_URL"):
+            log.warning(
+                "FUSEKI_SQLALCHEMY_URL is no longer used; set the CKAN config "
+                "option ckanext.fuseki.db_url (CKANINI__CKANEXT__FUSEKI__DB_URL) "
+                "or leave it unset to use CKAN's sqlalchemy.url."
+            )
     ENGINE = sqlalchemy.create_engine(db_uri, echo=echo)
     _METADATA = sqlalchemy.MetaData()
     JOBS_TABLE = _init_jobs_table()
