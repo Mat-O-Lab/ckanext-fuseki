@@ -25,9 +25,9 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 
 ### Components
 
-1. **Fuseki Security Configuration** (`config/fuseki/docker-entrypoint.sh`)
-   - Modifies `shiro.ini` on startup to block anonymous dataset access
-   - Requires authentication for all dataset endpoints: `/** = authc, roles[admin]`
+1. **Fuseki Security Configuration** (`optional/fuseki/shiro.ini`)
+   - Uses a `shiro.ini` that requires the Fuseki admin login for all dataset endpoints (anonymous access is blocked)
+   - Requires authentication for all dataset endpoints: `/** = authcBasic,user[admin]`
 
 2. **CKAN Transparent Proxy** (`ckanext/fuseki/views.py`)
    - Route: `/dataset/<id>/fuseki/$/<path:service_path>`
@@ -72,7 +72,7 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 This extension requires a custom Fuseki deployment with modified security settings. The necessary files are provided in the `optional/` folder:
 
 1. **`optional/fuseki/Dockerfile`** - Builds on `secoresearch/fuseki:6.2.0` base image
-2. **`optional/fuseki/docker-entrypoint.sh`** - Custom entrypoint that modifies `shiro.ini` to block anonymous access
+2. **`optional/fuseki/docker-entrypoint.sh`** - Entrypoint wrapper that starts Fuseki; anonymous access is blocked by the provided `shiro.ini`
 3. **`optional/docker-compose.yml`** - Example deployment configuration
 
 ### 1. Fuseki Container Setup

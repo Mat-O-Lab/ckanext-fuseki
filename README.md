@@ -20,8 +20,8 @@ and embeds a YASGUI query interface for interactive SPARQL exploration of linked
 This extension requires a **custom Fuseki deployment** with modified security settings to enable CKAN-authenticated access. The necessary files are provided in the `optional/` folder:
 
 - **`optional/fuseki/Dockerfile`** - Custom Fuseki image based on `secoresearch/fuseki:6.2.0`
-- **`optional/fuseki/docker-entrypoint.sh`** - Security wrapper that blocks anonymous dataset access
-- **`optional/fuseki/index.html`** - Fixed Fuseki UI for subpath deployment
+- **`optional/fuseki/docker-entrypoint.sh`** - Entrypoint wrapper that starts Fuseki with the image's server class
+- **`optional/fuseki/shiro.ini`** - Shiro configuration that requires the Fuseki `admin` login for everything except the health endpoints; this is what blocks anonymous access
 - **`optional/docker-compose.yml`** - Example standalone deployment configuration
 
 See the [optional/README.md](optional/README.md) for standalone deployment instructions, or integrate into your existing Docker Compose setup (see [Deployment](#deployment) section below).
@@ -48,6 +48,7 @@ See [SECURITY.md](SECURITY.md) for the full security architecture.
 | 2.9 and earlier | not tested  |
 | 2.10            | ✓ tested    |
 | 2.11            | ✓ tested    |
+| 2.12            | ✓ tested    |
 
 
 ## Installation
@@ -74,6 +75,7 @@ services:
     image: secoresearch/fuseki:6.2.0
     environment:
       - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
+      - ADMIN_PASSWORD=<your-fuseki-password>   # must match ckanext.fuseki.password
       - ENABLE_DATA_WRITE=true
       - ENABLE_UPDATE=true
       - ENABLE_UPLOAD=true
@@ -90,7 +92,7 @@ services:
       retries: 3
 ```
 
-- **`shiro.ini`** — configures HTTP Basic Auth; edit to set the admin password. It must contain the `DefaultWebSessionManager` lines from `optional/fuseki/shiro.ini` (Fuseki ≥ 5 requirement).
+- **`shiro.ini`** — configures HTTP Basic Auth (the admin password is set from `ADMIN_PASSWORD` at start). The image copies `/jena-fuseki/shiro.ini` to `/fuseki-base/shiro.ini` only on the **first start of a volume**; on an existing volume replace `/fuseki-base/shiro.ini` instead (it must stay writable, the entrypoint writes the password into it). It must contain the `DefaultWebSessionManager` lines from `optional/fuseki/shiro.ini` (Fuseki ≥ 5 requirement).
 - The Fuseki UI is served from the image itself and works behind an nginx `/fuseki/` prefix without a custom `index.html` (Fuseki ≥ 5 uses relative asset paths).
 
 **Start Fuseki:**
@@ -137,7 +139,8 @@ All configuration is read from `ckan.ini` (or the equivalent `CKANINI__` Docker 
 
 | ckan.ini key | Default | Description |
 |---|---|---|
-| `ckanext.fuseki.url` | `http://fuseki:3030/` | Direct internal URL of the Fuseki container — **must not** go through nginx |
+| `ckanext.fuseki.url` | `http://fuseki:3030/` | Base URL of Fuseki used for all API calls from CKAN (dataset creation, uploads, queries, SPARQL proxy). The internal container address is recommended; a public URL behind nginx works too but adds a hop and needs the `/fuseki/` route to forward the admin login |
+| `ckanext.fuseki.internal_url` | _(empty)_ | Optional direct container address, used only for the availability (ping) check; falls back to `ckanext.fuseki.url` |
 | `ckanext.fuseki.username` | `admin` | Fuseki admin username — always `admin` (hardcoded by the Fuseki image) |
 | `ckanext.fuseki.password` | `admin` | Fuseki admin password — must match the `ADMIN_PASSWORD` env var set on the Fuseki container |
 | `ckanext.fuseki.ckan_token` | _(empty)_ | CKAN API token for background job callbacks; required to process private datasets |
@@ -156,7 +159,7 @@ CKANINI__CKANEXT__FUSEKI__CKAN_TOKEN=<your-ckan-api-token>
 CKANINI__CKANEXT__FUSEKI__SSL_VERIFY=${SSL_VERIFY}
 ```
 
-`ckanext.fuseki.url` must be the **container-internal** address (e.g. `http://fuseki:3030/`), not the public nginx URL. CKAN uses this URL for all direct Fuseki API calls and the SPARQL proxy.
+Prefer the **container-internal** address (e.g. `http://fuseki:3030/`) for `ckanext.fuseki.url`: CKAN uses it for all direct Fuseki API calls and the SPARQL proxy, so a public nginx URL puts every call through the proxy.
 
 If `ckanext.fuseki.ckan_token` is not set, only public resources can be uploaded to the triple store.
 
