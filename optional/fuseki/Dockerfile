@@ -1,13 +1,10 @@
-FROM secoresearch/fuseki:4.9.0
+FROM secoresearch/fuseki:6.2.0
 
 # Copy our custom entrypoint that handles volume mount initialization
 # Need to switch to root temporarily to set permissions
 USER root
 COPY docker-entrypoint.sh /custom-entrypoint.sh
 RUN chmod +x /custom-entrypoint.sh
-
-# Copy custom index.html with corrected paths for subpath deployment
-COPY index.html /jena-fuseki/webapp/index.html
 
 # Switch back to the fuseki user (UID 1000)
 USER 1000

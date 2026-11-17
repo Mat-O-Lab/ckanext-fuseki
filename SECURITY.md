@@ -71,10 +71,9 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 
 This extension requires a custom Fuseki deployment with modified security settings. The necessary files are provided in the `optional/` folder:
 
-1. **`optional/fuseki/Dockerfile`** - Builds on `secoresearch/fuseki:4.9.0` base image
+1. **`optional/fuseki/Dockerfile`** - Builds on `secoresearch/fuseki:6.2.0` base image
 2. **`optional/fuseki/docker-entrypoint.sh`** - Custom entrypoint that modifies `shiro.ini` to block anonymous access
-3. **`optional/fuseki/index.html`** - Fixed Fuseki UI for subpath deployment
-4. **`optional/docker-compose.yml`** - Example deployment configuration
+3. **`optional/docker-compose.yml`** - Example deployment configuration
 
 ### 1. Fuseki Container Setup
 
@@ -84,11 +83,11 @@ Just mount the security wrapper script as the entrypoint:
 
 ```yaml
 fuseki:
-  image: secoresearch/fuseki:4.9.0
+  image: secoresearch/fuseki:6.2.0
   entrypoint: /custom-entrypoint.sh
   environment:
     - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
-    - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+    - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
   volumes:
     - ./config/fuseki/docker-entrypoint.sh:/custom-entrypoint.sh:ro
     - jena_data:/fuseki-base
@@ -99,7 +98,7 @@ fuseki:
 docker-compose up -d fuseki
 ```
 
-**Option B: Build Custom Image (includes fixed index.html)**
+**Option B: Build Custom Image**
 
 Build a custom image with the security wrapper:
 
@@ -109,7 +108,7 @@ fuseki:
     context: ckan_plugins/ckanext-fuseki/optional/fuseki/
   environment:
     - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
-    - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+    - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
   volumes:
     - jena_data:/fuseki-base
 ```

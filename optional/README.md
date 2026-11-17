@@ -4,9 +4,8 @@ This directory contains configuration for running Apache Jena Fuseki as a standa
 
 ## Files
 
-- **`fuseki/index.html`** — Custom Fuseki UI with corrected paths for subpath deployment (e.g. behind an nginx `/fuseki/` prefix)
 - **`fuseki/shiro.ini`** — Apache Shiro security configuration: controls authentication and endpoint access
-- **`docker-compose.yml`** — Standalone deployment using `secoresearch/fuseki:4.9.0`
+- **`docker-compose.yml`** — Standalone deployment using `secoresearch/fuseki:6.2.0`
 
 ## Configuration
 

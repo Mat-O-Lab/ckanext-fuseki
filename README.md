@@ -19,7 +19,7 @@ and embeds a YASGUI query interface for interactive SPARQL exploration of linked
 
 This extension requires a **custom Fuseki deployment** with modified security settings to enable CKAN-authenticated access. The necessary files are provided in the `optional/` folder:
 
-- **`optional/fuseki/Dockerfile`** - Custom Fuseki image based on `secoresearch/fuseki:4.9.0`
+- **`optional/fuseki/Dockerfile`** - Custom Fuseki image based on `secoresearch/fuseki:6.2.0`
 - **`optional/fuseki/docker-entrypoint.sh`** - Security wrapper that blocks anonymous dataset access
 - **`optional/fuseki/index.html`** - Fixed Fuseki UI for subpath deployment
 - **`optional/docker-compose.yml`** - Example standalone deployment configuration
@@ -66,21 +66,20 @@ pip install -e git+https://github.com/Mat-O-Lab/ckanext-fuseki.git#egg=ckanext-f
 
 ### 2. Deploy Fuseki
 
-Use `secoresearch/fuseki:4.9.0` with the provided configuration files mounted as volumes:
+Use `secoresearch/fuseki:6.2.0` (Jena 6, Java 21) with the provided configuration files mounted as volumes:
 
 ```yaml
 services:
   fuseki:
-    image: secoresearch/fuseki:4.9.0
+    image: secoresearch/fuseki:6.2.0
     environment:
-      - JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0
+      - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
       - ENABLE_DATA_WRITE=true
       - ENABLE_UPDATE=true
       - ENABLE_UPLOAD=true
       - QUERY_TIMEOUT=60000
     volumes:
       - jena_data:/fuseki-base
-      - ./path/to/ckanext-fuseki/optional/fuseki/index.html:/jena-fuseki/webapp/index.html
       - ./path/to/ckanext-fuseki/optional/fuseki/shiro.ini:/jena-fuseki/shiro.ini
     networks:
       - your_network
@@ -91,13 +90,30 @@ services:
       retries: 3
 ```
 
-- **`index.html`** — fixes asset paths for subpath (nginx proxy) deployments
-- **`shiro.ini`** — configures HTTP Basic Auth; edit to set the admin password
+- **`shiro.ini`** — configures HTTP Basic Auth; edit to set the admin password. It must contain the `DefaultWebSessionManager` lines from `optional/fuseki/shiro.ini` (Fuseki ≥ 5 requirement).
+- The Fuseki UI is served from the image itself and works behind an nginx `/fuseki/` prefix without a custom `index.html` (Fuseki ≥ 5 uses relative asset paths).
 
 **Start Fuseki:**
 ```bash
 docker-compose up -d fuseki
 ```
+
+#### Fuseki 5.x and 6.x (5.5 and later)
+
+Tested with `secoresearch/fuseki:6.2.0` (Jena 6, Java 21): UI behind an nginx `/fuseki/` prefix, admin login, dataset creation and a full update job. A TDB2 database created with 4.9 was opened unchanged by 5.6.0; an existing database was not re-tested on 6.2.0. Back up the `/fuseki-base` volume before upgrading. Required changes compared to Fuseki 4.9:
+
+1. **`shiro.ini`**: add to `[main]`
+   ```ini
+   statelessSessionManager = org.apache.shiro.web.session.mgt.DefaultWebSessionManager
+   securityManager.sessionManager = $statelessSessionManager
+   ```
+   Without it every request that passes authentication returns HTTP 500 `No SessionManager`.
+2. **Remove the `index.html` mount** (`/jena-fuseki/webapp/index.html`). The UI is served from inside the server jar and works behind an nginx `/fuseki/` prefix.
+3. **Dataset creation needs `-Dfuseki:allowAddByConfigFile=true`.** This extension creates one Fuseki dataset per CKAN dataset by posting an assembler description to `POST /$/datasets`. Fuseki 5.5.0 removed that (multipart and raw body) because of CVE-2025-50151 / CVE-2025-49656 (uploaded configuration with unvalidated paths, admin only). The extension now posts the assembly as a raw `text/turtle` body, which Fuseki accepts only with this system property, e.g. `JDK_JAVA_OPTIONS=-Xmx10g -Dfuseki:allowAddByConfigFile=true`. Without it job creation fails with `400 Service configuration from a multipart upload not supported`. Keep Fuseki reachable only for admins (Shiro) and by CKAN; the Jena maintainers have said this switch is a stop-gap.
+   Versions up to 5.4.0 accept the old upload without the property but are affected by the two CVEs.
+4. The image default command is `org.apache.jena.fuseki.main.cmds.FusekiServerCmd`. If you override `entrypoint:` in compose you must repeat the command, because Compose drops the image `CMD`.
+
+Datasets created with *persistent* off are in-memory and are empty after a Fuseki restart; resubmit them from CKAN.
 
 ### 3. Configure CKAN
 
@@ -128,6 +144,7 @@ All configuration is read from `ckan.ini` (or the equivalent `CKANINI__` Docker 
 | `ckanext.fuseki.formats` | `turtle text/turtle n3 nt hext trig longturtle xml json-ld ld+json jsonld` | Space-separated list of resource formats that trigger upload to the triple store |
 | `ckanext.fuseki.ssl_verify` | `true` | Verify SSL certificates when connecting to external resource URLs |
 | `ckanext.fuseki.sparklis_url` | _(empty)_ | If set, the query button redirects to this Sparklis instance instead of the built-in SPARQL UI |
+| `ckanext.fuseki.db_url` | CKAN's `sqlalchemy.url` | SQLAlchemy URL of the database that stores the job status and job log. Normally leave unset. Replaces the former `FUSEKI_SQLALCHEMY_URL` environment variable (which is now ignored). |
 
 Example Docker environment variables (set in `.env`):
 
