@@ -72,7 +72,9 @@ Use `secoresearch/fuseki:6.2.0` (Jena 6, Java 21) with the provided configuratio
 ```yaml
 services:
   fuseki:
-    image: secoresearch/fuseki:6.2.0
+    # builds secoresearch/fuseki:6.2.0 plus the shiro.ini that blocks anonymous access
+    build:
+      context: ./path/to/ckanext-fuseki/optional/fuseki/
     environment:
       - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
       - ADMIN_PASSWORD=<your-fuseki-password>   # must match ckanext.fuseki.password
@@ -82,7 +84,6 @@ services:
       - QUERY_TIMEOUT=60000
     volumes:
       - jena_data:/fuseki-base
-      - ./path/to/ckanext-fuseki/optional/fuseki/shiro.ini:/jena-fuseki/shiro.ini
     networks:
       - your_network
     healthcheck:
@@ -92,7 +93,7 @@ services:
       retries: 3
 ```
 
-- **`shiro.ini`** — configures HTTP Basic Auth (the admin password is set from `ADMIN_PASSWORD` at start). The image copies `/jena-fuseki/shiro.ini` to `/fuseki-base/shiro.ini` only on the **first start of a volume**; on an existing volume replace `/fuseki-base/shiro.ini` instead (it must stay writable, the entrypoint writes the password into it). It must contain the `DefaultWebSessionManager` lines from `optional/fuseki/shiro.ini` (Fuseki ≥ 5 requirement).
+- **`shiro.ini`** — configures HTTP Basic Auth (the admin password is set from `ADMIN_PASSWORD` at start). **Use the provided image build:** the stock `secoresearch/fuseki` image ships a `shiro.ini` that allows anonymous SPARQL queries and copies it to the volume only on first start, so the stock image alone leaves all datasets public. The wrapper in `optional/fuseki/` copies the restrictive `shiro.ini` to `/fuseki-base/shiro.ini` on every start (the file must stay writable, the base entrypoint writes the password into it) and refuses to start without it. Verify with `curl http://fuseki:3030/ds/sparql?query=ASK%7B%7D` (must return 401). The file must contain the `DefaultWebSessionManager` lines from `optional/fuseki/shiro.ini` (Fuseki ≥ 5 requirement).
 - The Fuseki UI is served from the image itself and works behind an nginx `/fuseki/` prefix without a custom `index.html` (Fuseki ≥ 5 uses relative asset paths).
 
 **Start Fuseki:**

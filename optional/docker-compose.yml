@@ -6,7 +6,8 @@ volumes:
 
 services:
   fuseki:
-    image: secoresearch/fuseki:6.2.0
+    # Builds secoresearch/fuseki:6.2.0 plus the shiro.ini that blocks anonymous access
+    build: ./fuseki
     restart: on-failure
     ports:
       - "3030:3030"
@@ -19,7 +20,6 @@ services:
       - QUERY_TIMEOUT=60000
     volumes:
       - jena_data:/fuseki-base
-      - ./fuseki/shiro.ini:/jena-fuseki/shiro.ini
     stop_grace_period: 10s
     healthcheck:
       test:

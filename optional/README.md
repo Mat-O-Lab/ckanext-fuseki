@@ -18,7 +18,7 @@ This directory contains configuration for running Apache Jena Fuseki as a standa
 
 ### shiro.ini
 
-`fuseki/shiro.ini` is mounted as a volume and controls which endpoints require authentication. It does **not** control the password (that is set by `ADMIN_PASSWORD`). The `shiro.ini` configures:
+`fuseki/shiro.ini` is baked into the image built from `fuseki/Dockerfile` and copied to `/fuseki-base/shiro.ini` by the entrypoint wrapper **on every start** (the base image only does that on the first start of a volume, and its own `shiro.ini` allows anonymous queries). It controls which endpoints require authentication. It does **not** control the password (that is set by `ADMIN_PASSWORD`). The `shiro.ini` configures:
 - Health-check endpoints (`/$/ping`, `/$/status`) as public
 - Static UI assets as public
 - All admin and data endpoints require HTTP Basic Auth with the `admin` role
@@ -27,7 +27,7 @@ JVM and Fuseki behaviour are controlled via environment variables in `docker-com
 
 | Variable | Default | Description |
 |---|---|---|
-| `JAVA_OPTIONS` | `-Xmx10g -Xms10g -DentityExpansionLimit=0` | JVM heap and entity expansion settings |
+| `JDK_JAVA_OPTIONS` | `-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true` | JVM heap and entity expansion settings. The `allowAddByConfigFile` property is required by ckanext-fuseki on Fuseki ≥ 5.5 (see the main README) |
 | `ENABLE_DATA_WRITE` | `true` | Allow writes via Graph Store Protocol |
 | `ENABLE_UPDATE` | `true` | Allow SPARQL UPDATE operations |
 | `ENABLE_UPLOAD` | `true` | Allow file uploads |

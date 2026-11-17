@@ -55,30 +55,16 @@ pkg_dict = toolkit.get_action('package_show')({'user': user}, {'id': id})
 dataset_uuid = pkg_dict['id']  # Always UUID
 ```
 
-### 3. Internal vs External URLs
+### 3. Which Fuseki URL is used
 
-**CRITICAL FIX**: The proxy must use internal docker network addresses, not external nginx URLs.
-
-#### Configuration
+The proxy (and all other calls from CKAN to Fuseki) builds its target from `ckanext.fuseki.url`:
 ```ini
-# External URL (used by browser/external access)
-ckanext.fuseki.url = https://docker-dev.iwm.fraunhofer.de/fuseki
-
-# Internal URL (used by proxy to avoid nginx loop)
-ckanext.fuseki.internal_url = http://fuseki:3030
+# Recommended: direct container address
+ckanext.fuseki.url = http://fuseki:3030/
 ```
+`ckanext.fuseki.internal_url` is optional and used **only** for the availability (ping) check; it does not affect the proxy.
 
-#### Auto-Detection
-If `ckanext.fuseki.internal_url` is not set, the proxy automatically detects nginx loops:
-```python
-if '/fuseki/' in fuseki_external_url:
-    fuseki_internal_url = 'http://fuseki:3030'
-    log.warning("Using internal Fuseki URL to avoid nginx loop")
-```
-
-**Why This Matters**: 
-- Using external URL creates a loop: CKAN → Nginx → CKAN → Nginx → ...
-- Using internal URL goes directly: CKAN → Fuseki (Docker network)
+A public URL such as `https://your-host/fuseki/` also works if the reverse proxy forwards `/fuseki/` to Fuseki (not to CKAN) and passes the admin login, but every call then makes an extra hop through the reverse proxy. There is no automatic detection or rewriting of the URL.
 
 ### 4. Transparent Forwarding
 
@@ -123,7 +109,7 @@ return Response(
 
 #### Fuseki Side
 - Proxy authenticates with admin credentials
-- Fuseki's shiro.ini blocks anonymous access: `/** = authc, roles[admin]`
+- Fuseki's shiro.ini blocks anonymous access: `/** = authcBasic,user[admin]` (see `optional/fuseki/shiro.ini`). The stock Fuseki image allows anonymous queries, so the provided shiro.ini must be active
 - Only proxy can access Fuseki (not direct browser access)
 
 ## Testing
@@ -150,7 +136,6 @@ curl 'http://fuseki:3030/2f159c41-c630-4e9b-bfa6-4df7dfdf0198/sparql'
 docker logs pmd-ckan-ckan-1 --tail 50 | grep fuseki
 
 # Expected output:
-# WARNI [ckanext.fuseki.views] Using internal Fuseki URL http://fuseki:3030 instead of external...
 # INFO  [ckanext.fuseki.views] Proxying request to Fuseki: GET http://fuseki:3030/UUID/sparql
 # INFO  [ckanext.fuseki.views] Fuseki response: 200
 ```
@@ -168,27 +153,27 @@ docker logs pmd-ckan-ckan-1 --tail 50 | grep fuseki
 
 ### 502 Bad Gateway
 - **Fuseki not running**: Check `docker ps | grep fuseki`
-- **Wrong internal URL**: Verify `ckanext.fuseki.internal_url` or auto-detection
+- **Wrong URL**: Verify `ckanext.fuseki.url` (with trailing slash)
 - **Solution**: Restart Fuseki or fix configuration
 
-### Nginx Loop (Fast 404 responses)
-- **Symptom**: Very fast 404 responses (< 30ms), check logs for "render time 0.026 seconds"
-- **Cause**: Using external URL instead of internal, creating nginx loop
-- **Solution**: Already fixed - proxy auto-detects and uses `http://fuseki:3030`
+### Very fast 404 responses (< 30ms)
+- **Cause**: `ckanext.fuseki.url` points at a CKAN/nginx route that ends up back in CKAN instead of at Fuseki
+- **Solution**: Point it at Fuseki (`http://fuseki:3030/`) or make sure the reverse proxy routes `/fuseki/` to the Fuseki container
 
 ## Implementation Files
 
 - `ckanext/fuseki/views.py` - Proxy implementation
 - `ckanext/fuseki/logic/auth.py` - Authorization (delegates to `package_show`)
 - `ckanext/fuseki/helpers.py` - Helper functions (fuseki_sparql_url)
-- `config/fuseki/docker-entrypoint.sh` - Fuseki security configuration
+- `optional/fuseki/shiro.ini` - Fuseki security configuration (anonymous access blocked)
+- `optional/fuseki/docker-entrypoint.sh` - installs it on every Fuseki start
 
 ## Configuration Example
 
 ```ini
 # CKAN Configuration (ckan.ini)
-ckanext.fuseki.url = https://docker-dev.iwm.fraunhofer.de/fuseki
-ckanext.fuseki.internal_url = http://fuseki:3030  # Optional, auto-detected
+ckanext.fuseki.url = http://fuseki:3030/
+ckanext.fuseki.internal_url =   # optional, only for the availability check
 ckanext.fuseki.username = admin
 ckanext.fuseki.password = your-secure-password
 ```
@@ -196,7 +181,7 @@ ckanext.fuseki.password = your-secure-password
 ```ini
 # Fuseki Shiro Configuration (shiro.ini)
 [urls]
-/** = authc, roles[admin]  # Block anonymous access to ALL endpoints
+/** = authcBasic,user[admin]  # Block anonymous access to ALL endpoints
 ```
 
 ## Notes

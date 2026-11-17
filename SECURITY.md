@@ -32,7 +32,7 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 2. **CKAN Transparent Proxy** (`ckanext/fuseki/views.py`)
    - Route: `/dataset/<id>/fuseki/$/<path:service_path>`
    - The `$` separator prevents conflicts with existing CKAN UI routes
-   - Accepts all HTTP methods (GET, POST, PUT, DELETE, etc.)
+   - Accepts all HTTP methods (GET, POST, PUT, DELETE, etc.); write operations require `package_update`, reads require `package_show`
    - Resolves dataset name/slug to UUID (Fuseki uses UUIDs)
    - Checks CKAN `package_show` permission
    - Forwards requests to Fuseki with admin credentials
@@ -71,15 +71,16 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 
 This extension requires a custom Fuseki deployment with modified security settings. The necessary files are provided in the `optional/` folder:
 
-1. **`optional/fuseki/Dockerfile`** - Builds on `secoresearch/fuseki:6.2.0` base image
-2. **`optional/fuseki/docker-entrypoint.sh`** - Entrypoint wrapper that starts Fuseki; anonymous access is blocked by the provided `shiro.ini`
-3. **`optional/docker-compose.yml`** - Example deployment configuration
+1. **`optional/fuseki/Dockerfile`** - Builds on `secoresearch/fuseki:6.2.0` and bakes in the `shiro.ini` and the entrypoint wrapper
+2. **`optional/fuseki/docker-entrypoint.sh`** - Entrypoint wrapper: copies the restrictive `shiro.ini` to `/fuseki-base/shiro.ini` on every start (and refuses to start without it), then starts Fuseki
+3. **`optional/fuseki/shiro.ini`** - Requires the Fuseki `admin` login for everything except the health endpoints. **This is what blocks anonymous access.** The stock `secoresearch/fuseki` image allows anonymous SPARQL queries (`/** = anon`) and only copies its `shiro.ini` to the volume on the first start, so running the stock image without this file leaves all datasets public.
+4. **`optional/docker-compose.yml`** - Example deployment configuration
 
 ### 1. Fuseki Container Setup
 
 **Option A: Mount Entrypoint (Simpler - No Build Required)**
 
-Just mount the security wrapper script as the entrypoint:
+Mount the wrapper script as the entrypoint **and** the `shiro.ini` it installs:
 
 ```yaml
 fuseki:
@@ -89,7 +90,8 @@ fuseki:
     - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
     - JDK_JAVA_OPTIONS=-Xmx10g -Xms10g -DentityExpansionLimit=0 -Dfuseki:allowAddByConfigFile=true
   volumes:
-    - ./config/fuseki/docker-entrypoint.sh:/custom-entrypoint.sh:ro
+    - ./ckan_plugins/ckanext-fuseki/optional/fuseki/docker-entrypoint.sh:/custom-entrypoint.sh:ro
+    - ./ckan_plugins/ckanext-fuseki/optional/fuseki/shiro.ini:/fuseki-init/shiro.ini:ro
     - jena_data:/fuseki-base
 ```
 
@@ -100,7 +102,7 @@ docker-compose up -d fuseki
 
 **Option B: Build Custom Image**
 
-Build a custom image with the security wrapper:
+Build the custom image (wrapper and `shiro.ini` are baked in):
 
 ```yaml
 fuseki:
@@ -132,7 +134,8 @@ docker-compose restart ckan
 Test that anonymous access to datasets is blocked:
 
 ```bash
-# This should return 401 Unauthorized
+# This must return 401 Unauthorized. If it returns 200, the restrictive shiro.ini is not active
+# (the stock image allows anonymous queries) - the datasets are public.
 curl http://fuseki:3030/{dataset-id}/sparql?query=SELECT%20*%20WHERE%20{?s%20?p%20?o}%20LIMIT%2010
 
 # Admin access should work
@@ -212,15 +215,15 @@ All endpoints support the same parameters and content types as Fuseki's native e
 Required CKAN configuration (already in place):
 
 ```ini
-ckanext.fuseki.url = http://fuseki:3030
+ckanext.fuseki.url = http://fuseki:3030/
 ckanext.fuseki.username = admin
 ckanext.fuseki.password = <admin-password>
 ```
 
-Or via environment variables:
+Keep the trailing slash in the URL: some calls append `$/datasets` directly. Or via environment variables:
 
 ```bash
-CKANINI__CKANEXT__FUSEKI__URL=http://fuseki:3030
+CKANINI__CKANEXT__FUSEKI__URL=http://fuseki:3030/
 CKANINI__CKANEXT__FUSEKI__USERNAME=admin
 CKANINI__CKANEXT__FUSEKI__PASSWORD=<admin-password>
 ```
@@ -242,7 +245,7 @@ When logged into CKAN, the browser session cookie is used automatically.
 
 ### 401 Unauthorized from Fuseki
 - ✅ Expected behavior - anonymous access is blocked
-- ✅ Use CKAN proxy instead: `/dataset/{id}/fuseki/sparql`
+- ✅ Use CKAN proxy instead: `/dataset/{id}/fuseki/$/sparql`
 
 ### 403 Forbidden from CKAN Proxy
 - Check dataset visibility
@@ -254,10 +257,11 @@ When logged into CKAN, the browser session cookie is used automatically.
 - Check Fuseki is running: `docker-compose ps fuseki`
 - Check Fuseki logs: `docker-compose logs fuseki`
 
-### shiro.ini not modified
-- Check docker-entrypoint.sh has execute permissions
-- Rebuild Fuseki image: `docker-compose build fuseki`
-- Check logs: `docker-compose logs fuseki | grep "CKAN Security"`
+### Anonymous queries return 200 (datasets are public)
+- The restrictive `shiro.ini` is not active, e.g. the stock image or the wrong entrypoint is used
+- Rebuild the image: `docker-compose build fuseki`
+- Check the installed file: `docker-compose exec fuseki grep -n '^/' /fuseki-base/shiro.ini` (must end with `/** = authcBasic,user[admin]`)
+- The wrapper aborts with `ERROR: /fuseki-init/shiro.ini missing` if the file is absent
 
 ## Security Benefits
 
