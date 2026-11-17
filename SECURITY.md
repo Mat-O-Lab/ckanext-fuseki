@@ -155,29 +155,34 @@ curl -H "Authorization: YOUR_API_TOKEN" \
   'https://your-ckan-site.com/dataset/{private-dataset-id}/fuseki/$/sparql?query=SELECT%20*%20WHERE%20{?s%20?p%20?o}%20LIMIT%2010'
 ```
 
-## Reverse Proxy Configuration (Optional)
+## Reverse Proxy Configuration
 
-If you want to completely block direct Fuseki access from the internet, configure your reverse proxy (Nginx):
+Fuseki is normally forwarded under `/fuseki/` (this is what the pmd-ckan stack does in `config/nginx/default.conf.template`). Anonymous access is blocked by Fuseki itself (`shiro.ini`), not by nginx:
 
 ```nginx
-# Block direct dataset access from external clients
-location ~ ^/fuseki/[a-f0-9-]{36} {
-    # Only allow from internal network or reject
-    allow 172.16.0.0/12;  # Docker network
-    deny all;
-}
-
-# Allow Fuseki admin interface for admins
-location ~ ^/fuseki/(#|\$) {
-    proxy_pass http://fuseki:3030;
-    # Optional: restrict to admin IPs
-}
-
-# Allow CKAN proxy (handles its own auth)
-location /dataset/ {
-    proxy_pass http://ckan:5000;
+location /fuseki/ {
+    proxy_pass http://fuseki:3030/;     # the trailing slash strips the /fuseki/ prefix
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_buffering off;
 }
 ```
+
+**Optional hardening.** To additionally keep the dataset endpoints (`/fuseki/<uuid>/...`) away from the internet, allow them only from the Docker network. Regex locations take precedence over the prefix location above; the regex must be quoted because of the `{36}`, and `proxy_pass` needs the `rewrite` because regex locations cannot carry a URI:
+
+```nginx
+location ~ "^/fuseki/[a-f0-9-]{36}(/|$)" {
+    allow 172.16.0.0/12;                 # Docker network (CKAN reaches Fuseki from here)
+    deny all;
+    rewrite ^/fuseki/(.*)$ /$1 break;
+    proxy_pass http://fuseki:3030;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_buffering off;
+}
+```
+
+Tested with nginx 1.30 and Fuseki 6.2.0: from inside the allowed range anonymous dataset queries return 401 (Shiro) and admin queries 200; from outside the range dataset endpoints return 403 even with the admin login, while `/fuseki/$/ping` and the admin API (with login) stay reachable. Adjust the `allow` range to your network. If your nginx sees all clients with a Docker gateway address (e.g. requests arrive through a local proxy), the `allow` rule cannot tell them apart; then rely on Shiro.
 
 ## API Endpoints
 
