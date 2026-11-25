@@ -63,7 +63,23 @@ Direct Access → Fuseki ({fuseki-url}/{id}/*)
 - ✅ Admin users can access Fuseki UI directly
 - ✅ Fuseki admin interface: `/fuseki/#/manage`
 - ✗ Direct dataset access blocked for non-admins
-- ℹ️ Only admin credentials work
+- ⚠️ The Fuseki `admin` login bypasses every CKAN check (private datasets, read/write split, CSRF). If Fuseki is published (e.g. an nginx `/fuseki/` route) use a strong `ckanext.fuseki.password` (it is also rendered into `shiro.ini` via `ADMIN_PASSWORD`), or do not publish the route and use the container-internal `ckanext.fuseki.url` so Fuseki is reachable only through the CKAN proxy.
+
+### Proxy permissions per service
+
+| Service | Method | Required |
+|---|---|---|
+| `sparql`, `query`, `get` | any | read (`package_show`) |
+| `data` | GET/HEAD/OPTIONS | read |
+| `data` | PUT/POST/DELETE/PATCH | `package_update` |
+| `update`, `upload` | any | `package_update` |
+| anything else | any | `package_update` |
+
+Allowlist: only the known read requests pass with read access. Paths with `.`/`..` segments are rejected (400).
+
+CSRF: CKAN (2.10+) rejects cookie-session POST/PUT/PATCH/DELETE without a CSRF token. The proxy view is exempt so Sparklis/YASGUI query POSTs work, and the proxy checks CSRF itself for write requests. Requests authenticated with an API token (`Authorization` header) skip CSRF, as everywhere in CKAN.
+
+Direct writes (`update`, `upload`, `data`) are not tracked by CKAN; the next Create/Update rebuilds the dataset from the CKAN resources and discards them.
 
 ## Deployment
 

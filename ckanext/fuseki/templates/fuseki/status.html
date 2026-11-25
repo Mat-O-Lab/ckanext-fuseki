@@ -44,36 +44,71 @@
         </div>
         
         <!-- Informational Section -->
-        <div class="alert alert-info mt-3" role="alert">
-            <h5 class="alert-heading"><i class="fa fa-info-circle"></i> {{ _('Apache Jena Fuseki Access Information') }}</h5>
-            <hr>
-            <ol class="mb-0">
-                <li class="mb-2">
-                    <strong>{{ _('Secured Access:') }}</strong> 
-                    {% if pkg_dict.private %}
-                    {{ _('This is a <strong>private dataset</strong>. SPARQL endpoints are only accessible to authorized CKAN users with read permission on this dataset.') }}
-                    {% else %}
-                    {{ _('This is a <strong>public dataset</strong>. SPARQL endpoints are accessible to anyone without authentication.') }}
-                    {% endif %}
-                </li>
-                <li class="mb-2">
-                    <strong>{{ _('Authentication Methods:') }}</strong>
-                    <ul class="mb-0">
-                        <li>{{ _('<strong>Browser:</strong> Log in to CKAN and access endpoints through your browser session') }}</li>
-                        <li>{{ _('<strong>API/curl:</strong> Use CKAN API token in Authorization header') }} 
-                            <code style="font-size: 0.85em;">Authorization: YOUR_API_TOKEN</code>
-                        </li>
-                    </ul>
-                </li>
-                <li class="mb-2">
-                    <strong>{{ _('SPARQL Endpoint:') }}</strong> 
-                    <code style="font-size: 0.85em;">{{ h.fuseki_sparql_url(pkg_dict) }}</code>
-                </li>
-                <li class="mb-2">
-                    <strong>{{ _('Named Graphs:') }}</strong> 
-                    {{ _('Each resource file is uploaded to its own named graph within a dedicated dataset for this CKAN package.') }}
-                </li>
-            </ol>
+        {% set sparql_url = h.fuseki_sparql_url(pkg_dict) %}
+        {% set base_url = sparql_url[:-6] %}
+        <div class="alert alert-info mt-3 py-2 small" role="alert">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <i class="fa fa-info-circle"></i>
+                <strong>{{ _('Apache Jena Fuseki') }}</strong>
+                {% if pkg_dict.private %}
+                <span class="badge bg-secondary" title="{{ _('Only CKAN users with read permission on this dataset can access the endpoints.') }}">{{ _('private') }}</span>
+                {% else %}
+                <span class="badge bg-success" title="{{ _('Read endpoints are accessible without authentication.') }}">{{ _('public') }}</span>
+                {% endif %}
+                <span class="text-muted">{{ _('SPARQL endpoint:') }}</span>
+                <code>{{ sparql_url }}</code>
+            </div>
+
+            <details class="mt-2">
+                <summary><strong>{{ _('Endpoints') }}</strong> <span class="text-muted">(sparql, query, get, update, upload, data)</span></summary>
+                <div class="mt-1">
+                    {{ _('Base URL:') }} <code>{{ base_url }}</code>
+                    <table class="table table-sm table-borderless mb-1 mt-1" style="font-size: 0.9em;">
+                        <tbody>
+                            {% set endpoints = [
+                                ('sparql', _('SPARQL query (GET/POST)'), 'read'),
+                                ('query', _('SPARQL query, alias of sparql'), 'read'),
+                                ('get', _('Read graphs (Graph Store Protocol)'), 'read'),
+                                ('data', _('Read (GET) and write (PUT/POST/DELETE) graphs (Graph Store Protocol)'), 'mixed'),
+                                ('update', _('SPARQL Update: INSERT/DELETE/DROP (POST)'), 'write'),
+                                ('upload', _('Upload RDF files into a graph (POST)'), 'write')
+                            ] %}
+                            {% for name, purpose, mode in endpoints %}
+                            <tr>
+                                <td class="py-0"><code>{{ name }}</code></td>
+                                <td class="py-0">
+                                    {% if mode == 'read' %}<span class="badge bg-success">{{ _('read') }}</span>
+                                    {% elif mode == 'write' %}<span class="badge bg-warning text-dark">{{ _('write') }}</span>
+                                    {% else %}<span class="badge bg-success">{{ _('read') }}</span> <span class="badge bg-warning text-dark">{{ _('write') }}</span>{% endif %}
+                                </td>
+                                <td class="py-0">{{ purpose }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <span class="text-muted">{{ _('read = read permission on the dataset; write = edit permission. Add ?graph=<resource URL> (GSP) or GRAPH <resource URL> {…} (SPARQL) to target one named graph.') }}</span>
+                </div>
+            </details>
+
+            <details class="mt-1">
+                <summary><strong>{{ _('Authentication') }}</strong></summary>
+                <ul class="mb-0 mt-1">
+                    <li>{{ _('<strong>Browser:</strong> log in to CKAN and use the endpoints with your session.') }}</li>
+                    <li>{{ _('<strong>API/curl:</strong> send your CKAN API token:') }} <code>Authorization: YOUR_API_TOKEN</code></li>
+                </ul>
+            </details>
+
+            <details class="mt-1">
+                <summary><strong>{{ _('Named graphs') }}</strong></summary>
+                <div class="mt-1">{{ _('Each resource file is uploaded to its own named graph within a dedicated dataset for this CKAN package.') }}</div>
+            </details>
+
+            <details class="mt-1">
+                <summary class="text-warning-emphasis"><i class="fa fa-exclamation-triangle"></i> <strong>{{ _('Warning: direct writes') }}</strong></summary>
+                <div class="mt-1">
+                    {{ _('Writing via update, upload or data (PUT/POST/DELETE) changes the dataset in ways CKAN cannot track. Such changes are not synced to CKAN resources, and Create/Update afterwards rebuilds the dataset from the CKAN resources only, discarding all manual changes. Use these endpoints only if you accept that the dataset can no longer be managed reliably from this page.') }}
+                </div>
+            </details>
         </div>
         <hr class="">
         {% if status.metadata is defined %}

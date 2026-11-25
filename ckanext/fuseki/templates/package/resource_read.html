@@ -3,6 +3,6 @@
 {% block action_manage %}
 {{ super() }}
 {% if res.url and h.is_url(res.url) and res.format=='SPARQL' %}
-<li>{% link_for _('Query'), named_route='fuseki.query', id=pkg.name, class_='btn btn-secondary', icon='play' %}</li>
+<li><a class="btn btn-secondary" href="{{ h.fuseki_query_url(pkg)|safe }}"><i class="fa fa-play"></i> {{ _('Query') }}</a></li>
 {% endif %}
 {% endblock action_manage %}

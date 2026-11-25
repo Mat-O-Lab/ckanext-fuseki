@@ -2,7 +2,8 @@ import ckan.lib.base as base
 import ckan.lib.helpers as core_helpers
 import ckan.plugins.toolkit as toolkit
 from ckan.common import _, config
-from flask import Blueprint, request, Response, make_response
+from flask import Blueprint, g, request, Response, make_response
+from ckan.config.middleware.flask_app import csrf
 from flask.views import MethodView
 import requests
 
@@ -11,18 +12,25 @@ from ckanext.fuseki.helpers import fuseki_query_url, fuseki_service_available
 
 log = __import__("logging").getLogger(__name__)
 
-_WRITE_PATHS = {"update", "upload"}
-_WRITE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
+_READ_METHODS = {"GET", "HEAD", "OPTIONS"}
+# Query-only services: read access is enough for any HTTP method (POST carries the query).
+_READ_PATHS = {"sparql", "query", "get"}
 
 
 def _requires_write(service_path: str, http_method: str) -> bool:
-    """Return True if this proxy request requires package_update permission."""
+    """Return True if this proxy request requires package_update permission.
+
+    Allowlist: only known read-only requests pass with read access.
+    Everything else (update, upload, data with PUT/POST/DELETE/PATCH,
+    unknown paths) needs package_update.
+    """
     path = service_path.strip("/")
-    if path in _WRITE_PATHS:
-        return True
-    if path == "data" and http_method.upper() in _WRITE_METHODS:
-        return True
-    return False
+    method = http_method.upper()
+    if path in _READ_PATHS:
+        return False
+    if path in ("", "data") and method in _READ_METHODS:
+        return False
+    return True
 
 
 blueprint = Blueprint("fuseki", __name__)
@@ -139,6 +147,10 @@ def query_view(id: str):
     except toolkit.NotAuthorized:
         base.abort(403, _("Not authorized to see this page"))
 
+    # Sparklis is the preferred query UI; the inline YASGUI page is the fallback.
+    if toolkit.config.get("ckanext.fuseki.sparklis_url", ""):
+        return toolkit.redirect_to(fuseki_query_url(pkg_dict))
+
     return base.render(
         "fuseki/query.html",
         extra_vars={"pkg_dict": pkg_dict},
@@ -204,8 +216,16 @@ def fuseki_proxy(id: str, service_path: str = ''):
         log.error(f"Error fetching package {id}: {e}")
         toolkit.abort(500, _('Internal server error'))
 
+    # Reject path traversal so a read-only path cannot be turned into a write service
+    if any(seg in ('.', '..') for seg in service_path.split('/')):
+        toolkit.abort(400, _('Invalid service path'))
+
     # Write operations require package_update permission
     if _requires_write(service_path, request.method):
+        # The view is CSRF-exempt (see below), so enforce CSRF here for
+        # cookie-session writes. Requests authenticated by API token are immune.
+        if not g.get("login_via_auth_header"):
+            csrf.protect()
         try:
             toolkit.check_access(
                 'package_update',
@@ -278,6 +298,10 @@ def fuseki_proxy(id: str, service_path: str = ''):
         log.error(f"Error proxying request to Fuseki: {e}")
         toolkit.abort(502, _('Bad Gateway: Could not connect to Fuseki'))
 
+
+# Query POSTs (Sparklis, YASGUI) cannot carry a CKAN CSRF token and are read-only,
+# so exempt the proxy view; writes are checked explicitly inside fuseki_proxy.
+csrf.exempt(fuseki_proxy)
 
 # Single route handles both root and paths
 # Note: Flask's path converter doesn't match empty strings, so we need two rules

@@ -36,8 +36,13 @@ See the [optional/README.md](optional/README.md) for standalone deployment instr
   - Public datasets: accessible to anyone via the CKAN proxy
   - Private datasets: require CKAN authentication (browser session or API token)
   - Direct Fuseki access: blocked for anonymous users, admin-only
-- **Query Dataset button** — embedded YASGUI interface for interactive SPARQL exploration
+- **Query Dataset button** — opens Sparklis when `ckanext.fuseki.sparklis_url` is set, otherwise the embedded YASGUI interface (same on the Fuseki tab, the resource page and the resource list)
+- **Endpoint overview** — the Fuseki tab lists the sparql, query, get, data, update and upload endpoints with their required permission
 - **Persistent & reasoning options** — configurable at dataset level
+
+**Endpoint permissions** (proxy `/dataset/<id>/fuseki/$/<service>`): `sparql`, `query`, `get`, `data` (GET) need read permission; `update`, `upload`, `data` (PUT/POST/DELETE) and any unknown path need edit permission (`package_update`). Writing directly changes the dataset in ways CKAN cannot track; the next Create/Update rebuilds it from the CKAN resources and discards manual changes.
+
+**Warning:** if Fuseki is also published directly (for example an nginx `/fuseki/` route), its own `admin` login is the only protection there and bypasses all CKAN checks. Use a strong `ckanext.fuseki.password`, and prefer the container-internal `ckanext.fuseki.url`.
 
 See [SECURITY.md](SECURITY.md) for the full security architecture.
 

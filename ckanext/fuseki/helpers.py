@@ -4,6 +4,7 @@ import re
 
 import requests
 from ckan.common import config
+from ckan.plugins.toolkit import asbool
 
 from ckanext.fuseki.backend import get_graph
 
@@ -18,7 +19,7 @@ def fuseki_service_available():
     base = config.get("ckanext.fuseki.internal_url", "") or config.get("ckanext.fuseki.url", "")
     if not base:
         return False
-    ssl_verify = config.get("ckanext.fuseki.ssl_verify", True)
+    ssl_verify = asbool(config.get("ckanext.fuseki.ssl_verify", True))
     # /$/ping is explicitly anon in shiro.ini and is the canonical health endpoint
     ping_url = base.rstrip("/") + "/$/ping"
     try:
@@ -61,6 +62,16 @@ def fuseki_query_url(pkg_dict):
     return url
 
 
+def fuseki_endpoint_url(pkg_dict, service_path="sparql"):
+    """Returns the CKAN proxy URL for any Fuseki service of a dataset."""
+    from ckan.plugins import toolkit
+
+    return toolkit.url_for('fuseki.fuseki_proxy',
+                           id=pkg_dict['id'],
+                           service_path=service_path,
+                           qualified=True)
+
+
 def fuseki_sparql_url(pkg_dict):
     """
     Returns the SPARQL endpoint URL for a dataset.
@@ -89,4 +100,5 @@ def get_helpers():
         "fuseki_graph_exists": fuseki_graph_exists,
         "fuseki_query_url": fuseki_query_url,
         "fuseki_sparql_url": fuseki_sparql_url,
+        "fuseki_endpoint_url": fuseki_endpoint_url,
     }
