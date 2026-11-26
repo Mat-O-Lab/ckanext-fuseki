@@ -35,6 +35,12 @@ def _requires_write(service_path: str, http_method: str) -> bool:
 
 blueprint = Blueprint("fuseki", __name__)
 
+# RFC 9110 hop-by-hop headers, never forwarded by a proxy
+_HOP_BY_HOP_HEADERS = frozenset({
+    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+    "te", "trailer", "transfer-encoding", "upgrade",
+})
+
 
 class FusekiView(MethodView):
     def post(self, id: str):
@@ -285,10 +291,18 @@ def fuseki_proxy(id: str, service_path: str = ''):
                 yield chunk
         
         # Use make_response to bypass CKAN's error handling and template wrapping
+        # urllib3 already removed the chunked framing from the body, so hop-by-hop
+        # headers (Transfer-Encoding: chunked, Connection, ...) must not be passed on:
+        # the WSGI server would announce chunked encoding for an unchunked body and
+        # nginx rejects it ("upstream sent invalid chunked response").
+        headers = {
+            k: v for k, v in response.raw.headers.items()
+            if k.lower() not in _HOP_BY_HOP_HEADERS
+        }
         flask_response = Response(
             generate(),
             status=response.status_code,
-            headers=dict(response.raw.headers),  # Pass ALL headers as-is
+            headers=headers,
             direct_passthrough=True  # Tell Flask not to modify the response body
         )
         
